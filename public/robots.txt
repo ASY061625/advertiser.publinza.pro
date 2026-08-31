@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# The admin panel is unlisted; keep it out of every index.
+Disallow: /asylogin
+
+Sitemap: https://publinza.pro/sitemap.xml

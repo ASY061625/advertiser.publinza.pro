@@ -1,0 +1,24 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - app
+        - config
+        - database
+        - routes
+        - tests
+
+    excludePaths:
+        - bootstrap/cache
+
+    # Every controller in this codebase is thin; anything that would need an
+    # ignore here is a sign the logic belongs in a domain action instead.
+    ignoreErrors:
+        - '#Unsafe usage of new static#'
+
+    checkModelProperties: false
+    checkOctaneCompatibility: false
+    reportUnmatchedIgnoredErrors: true
