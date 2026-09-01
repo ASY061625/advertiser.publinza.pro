@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Domain\Posts\Models\Post;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use Illuminate\Support\Facades\Event;
 use App\Observers\PostObserver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
@@ -17,6 +20,11 @@ class AppServiceProvider extends ServiceProvider
         // Enforces the post lifecycle and writes post_status_history. Registered
         // here rather than at call sites so no code path can skip it.
         Post::observe(PostObserver::class);
+
+        // Registered directly rather than relying on framework auto-discovery:
+        // if this listener silently stopped being registered, signup would
+        // succeed and no verification email would ever arrive.
+        Event::listen(Registered::class, SendEmailVerificationNotification::class);
 
         // Fail loudly in development rather than silently N+1 in production.
         Model::preventLazyLoading(! app()->isProduction());

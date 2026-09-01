@@ -30,7 +30,7 @@
                class="text-base text-ink-700 transition-colors duration-fast hover:text-brand">
                 Log in
             </a>
-            <x-ui.button :href="config('publinza.app_url').'/register'">Create account</x-ui.button>
+            <x-ui.button :href="config('publinza.app_url').'/signup'">Create account</x-ui.button>
         </div>
 
         <button type="button"
@@ -54,7 +54,7 @@
             @endforeach
             <a href="{{ config('publinza.app_url') }}/login"
                class="rounded-button px-3 py-2 text-base text-ink-700 hover:bg-sunken">Log in</a>
-            <x-ui.button :href="config('publinza.app_url').'/register'" class="mt-2">Create account</x-ui.button>
+            <x-ui.button :href="config('publinza.app_url').'/signup'" class="mt-2">Create account</x-ui.button>
         </nav>
     </div>
 </header>

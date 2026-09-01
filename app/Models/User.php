@@ -12,11 +12,14 @@ use App\Domain\Catalog\Models\Favorite;
 use App\Domain\Catalog\Models\Website;
 use App\Domain\Catalog\Models\Wishlist;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\TrustedDevice;
 use App\Domain\Messaging\Models\Conversation;
 use App\Domain\Posts\Models\Post;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Trading\Models\Cart;
 use App\Domain\Trading\Models\Order;
+use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -58,7 +61,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * @var list<string>
      */
-    protected $hidden = ['password', 'remember_token', 'two_factor_secret'];
+    protected $hidden = ['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'];
 
     /**
      * @return array<string, string>
@@ -67,6 +70,8 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
             'password' => 'hashed',
             'status' => UserStatus::class,
         ];
@@ -75,6 +80,31 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isActive(): bool
     {
         return $this->status === UserStatus::Active;
+    }
+
+    /** Two-factor is only on once a code from the authenticator has been proven. */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
+    }
+
+    /** Null until the first successful sign-in, which is how onboarding routes. */
+    public function hasSignedInBefore(): bool
+    {
+        return $this->last_login_at !== null;
+    }
+
+    // ------------------------------------------------------------ notifications
+
+    /** Our copy, and a link on the advertiser subdomain rather than APP_URL. */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 
     // ---------------------------------------------------------- relationships
@@ -175,6 +205,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function blacklists(): HasMany
     {
         return $this->hasMany(Blacklist::class);
+    }
+
+    /**
+     * @return HasMany<TrustedDevice, $this>
+     */
+    public function trustedDevices(): HasMany
+    {
+        return $this->hasMany(TrustedDevice::class);
     }
 
     protected static function newFactory(): UserFactory

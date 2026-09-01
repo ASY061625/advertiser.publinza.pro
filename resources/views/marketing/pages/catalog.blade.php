@@ -57,7 +57,7 @@
         @endif
 
         <div class="mt-6 flex flex-wrap items-center gap-3">
-            <x-ui.button size="lg" :href="config('publinza.app_url').'/register'">See all sites</x-ui.button>
+            <x-ui.button size="lg" :href="config('publinza.app_url').'/signup'">See all sites</x-ui.button>
             <p class="text-base text-ink-500">Free to browse. You only pay when you place.</p>
         </div>
     </x-ui.section>

@@ -10,6 +10,7 @@ use App\Http\Middleware\SecureAdminHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -24,7 +25,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/marketing.php'));
 
             // 2. Advertiser app — app.publinza.pro, `web` guard.
-            Route::middleware(['web', HandleAdvertiserInertiaRequests::class])
+            //    AuthenticateSession ties each session to the password hash it
+            //    was created under, so changing a password — including through
+            //    a reset — signs every other session out. That is the mechanism
+            //    behind "you have been signed out everywhere else", and it works
+            //    with the Redis session driver, which a DELETE on the sessions
+            //    table would not.
+            Route::middleware(['web', AuthenticateSession::class, HandleAdvertiserInertiaRequests::class])
                 ->domain(config('publinza.domains.app'))
                 ->group(base_path('routes/app.php'));
 

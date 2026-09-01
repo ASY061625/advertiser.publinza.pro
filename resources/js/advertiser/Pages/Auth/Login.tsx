@@ -1,51 +1,82 @@
-import { Head, useForm } from '@inertiajs/react';
-import type { FormEvent } from 'react';
-import { Button } from '@shared/ui';
+import { Link, useForm, usePage } from '@inertiajs/react';
+import { useState, type FormEvent } from 'react';
+import { Alert, Button, Checkbox, Input } from '@shared/ui';
+import { AuthLayout } from '../../Components/auth/AuthLayout';
+import { PasswordField } from '../../Components/auth/PasswordField';
+import { email as validateEmail, required } from '../../Components/auth/validation';
 
-export default function Login() {
-    const form = useForm({ email: '', password: '', remember: false });
+export default function Login({ proofLines }: { proofLines: string[] }) {
+    const { props } = usePage<{ flash: { status?: string } }>();
+    const form = useForm({ email: '', password: '', remember: false as boolean });
+    const [touched, setTouched] = useState<Record<string, string | null>>({});
 
     function submit(event: FormEvent) {
         event.preventDefault();
-        form.post('/login');
+        form.post('/login', { onFinish: () => form.reset('password') });
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-canvas px-6">
-            <Head title="Sign in" />
+        <AuthLayout
+            title="Sign in"
+            heading="Sign in"
+            subheading="Advertiser accounts only."
+            proofLines={proofLines}
+            footer={
+                <>
+                    New to Publinza?{' '}
+                    <Link href="/signup" className="text-brand underline">
+                        Create an account
+                    </Link>
+                </>
+            }
+        >
+            {props.flash?.status && (
+                <div className="mb-6">
+                    <Alert tone="success" title={props.flash.status} />
+                </div>
+            )}
 
-            <form onSubmit={submit} className="card w-full max-w-sm p-6">
-                <h1 className="font-sora text-lg font-semibold text-ink-900">Sign in to Publinza</h1>
-
-                <label className="mt-6 block text-sm text-ink-500" htmlFor="email">
-                    Email
-                </label>
-                <input
+            <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
+                <Input
                     id="email"
+                    label="Email"
                     type="email"
-                    autoComplete="email"
+                    autoComplete="username"
+                    autoFocus
                     value={form.data.email}
+                    error={form.errors.email ?? touched.email ?? undefined}
                     onChange={(event) => form.setData('email', event.target.value)}
-                    className="mt-1 h-9 w-full rounded-input border border-ink-300 px-3 text-base"
+                    onBlur={() => setTouched((c) => ({ ...c, email: validateEmail(form.data.email) }))}
                 />
-                {form.errors.email && <p className="mt-1 text-sm text-danger">{form.errors.email}</p>}
 
-                <label className="mt-4 block text-sm text-ink-500" htmlFor="password">
-                    Password
-                </label>
-                <input
-                    id="password"
-                    type="password"
+                <PasswordField
+                    label="Password"
+                    plain
                     autoComplete="current-password"
                     value={form.data.password}
-                    onChange={(event) => form.setData('password', event.target.value)}
-                    className="mt-1 h-9 w-full rounded-input border border-ink-300 px-3 text-base"
+                    error={form.errors.password ?? touched.password ?? undefined}
+                    onChange={(value) => form.setData('password', value)}
+                    onBlur={() =>
+                        setTouched((c) => ({ ...c, password: required('your password')(form.data.password) }))
+                    }
                 />
 
-                <Button type="submit" disabled={form.processing} className="mt-6 w-full">
+                <div className="flex items-center justify-between">
+                    <Checkbox
+                        id="remember"
+                        label="Remember me"
+                        checked={form.data.remember}
+                        onChange={(event) => form.setData('remember', event.target.checked)}
+                    />
+                    <Link href="/forgot-password" className="text-base text-brand underline">
+                        Forgot password?
+                    </Link>
+                </div>
+
+                <Button type="submit" size="lg" loading={form.processing} className="w-full">
                     Sign in
                 </Button>
             </form>
-        </div>
+        </AuthLayout>
     );
 }

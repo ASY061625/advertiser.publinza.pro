@@ -142,6 +142,58 @@ reach Google Fonts — the committed versions fell back to a system sans for the
 
 ---
 
+## Advertiser authentication
+
+Advertisers only. There is no publisher role and no publisher signup anywhere in this
+product — every account buys placements, and the sites being bought are ours.
+
+| Route | Purpose |
+|---|---|
+| `/signup` | Create an account; also creates a zero-balance wallet and a cart |
+| `/login` | Password, then a two-factor challenge if it is on |
+| `/forgot-password` | Emails a reset link; the response never reveals whether the account exists |
+| `/reset-password/{token}` | Single use, 60-minute life |
+| `/verify-email` | Where an unverified account lands; resend limited to once a minute |
+| `/two-factor-challenge` | Second step; not signed in until it passes |
+| `POST /logout` | Also drops this browser's trusted-device token |
+| `/settings/two-factor` | Turn 2FA on or off, and regenerate recovery codes |
+
+**Throttling.** `LoginThrottle` allows five attempts per email *and* IP per minute, then locks
+that pair out for 15 minutes and emails the account owner once. Keyed on the pair
+deliberately: email alone lets anyone lock a victim out, IP alone lets a botnet spread a
+credential-stuffing run across addresses.
+
+**Hashing.** Argon2id at 64MiB / 4 passes / 2 threads (`config/hashing.php`). Tests drop the
+cost — the algorithm under test is unchanged.
+
+**Sessions.** Regenerated on sign-in. Cookies are httpOnly, SameSite=Lax, Secure wherever
+HTTPS is served, and encrypted. `AuthenticateSession` ties each session to the password hash
+it was created under, so a reset signs every other session out — this works with the Redis
+session driver, which deleting rows from `sessions` would not.
+
+**Two-factor.** Optional TOTP. The secret is encrypted at rest, and 2FA is not enforced until
+a first code is confirmed, so a half-finished setup cannot lock anyone out. Eight recovery
+codes are shown once and stored hashed — they cannot be shown again. "Trust this device for
+30 days" stores only the token's hash; the plaintext lives in an httpOnly cookie.
+
+**Enumeration.** Forgot-password always answers the same way. Login gives one message for a
+wrong password and a missing account, and hashes a throwaway value when the account does not
+exist so the two take the same time.
+
+**Audit.** Every attempt writes to `login_attempts` with IP, user agent and outcome —
+including failed two-factor and lockout attempts, not just the paths someone remembered.
+
+### Two things worth knowing
+
+The first-ever sign-in routes to `/projects/create` rather than `/dashboard`, decided by
+`last_login_at` being null. `CompleteLogin` reads it before stamping it.
+
+No QR code is rendered: there is no QR backend installed, so the setup screen shows the
+`otpauth://` link (tappable straight into an authenticator on a phone) and the secret grouped
+in fours. Adding `bacon/bacon-qr-code` would let `google2fa-qrcode` draw a real QR.
+
+---
+
 ## Layout
 
 ```

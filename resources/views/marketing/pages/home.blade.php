@@ -107,7 +107,7 @@
         <x-marketing.catalog-table :rows="$previewRows" :ranges="$ranges" filterable />
 
         <div class="mt-6">
-            <x-ui.button size="lg" :href="config('publinza.app_url').'/register'">See all sites</x-ui.button>
+            <x-ui.button size="lg" :href="config('publinza.app_url').'/signup'">See all sites</x-ui.button>
         </div>
     </x-ui.section>
 

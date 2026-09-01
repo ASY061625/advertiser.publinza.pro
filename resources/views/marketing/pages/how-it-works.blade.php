@@ -45,7 +45,7 @@
         </div>
 
         <div class="mt-8">
-            <x-ui.button size="lg" :href="config('publinza.app_url').'/register'">Create an account</x-ui.button>
+            <x-ui.button size="lg" :href="config('publinza.app_url').'/signup'">Create an account</x-ui.button>
         </div>
     </x-ui.section>
 

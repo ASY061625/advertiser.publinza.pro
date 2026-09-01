@@ -38,6 +38,10 @@ class HandleAdvertiserInertiaRequests extends Middleware
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+                'status' => $request->session()->get('status'),
+                // Recovery codes are flashed exactly once, by the response that
+                // generated them. They are hashed at rest and cannot be re-read.
+                'recoveryCodes' => $request->session()->get('recoveryCodes'),
             ],
         ];
     }
