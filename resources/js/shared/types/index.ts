@@ -1,5 +1,6 @@
-export type StatusKey =
-    'draft' | 'new' | 'in_progress' | 'content_review' | 'published' | 'frozen' | 'rejected' | 'refunded';
+// StatusKey is owned by the Badge that renders it, so the vocabulary and
+// its colours cannot drift apart.
+export type { StatusKey } from '@shared/ui';
 
 export interface User {
     id: number;

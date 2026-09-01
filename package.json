@@ -8,6 +8,7 @@
         "build": "tsc --noEmit && vite build",
         "typecheck": "tsc --noEmit",
         "verify:bundles": "node scripts/assert-bundle-isolation.mjs",
+        "verify:tokens": "node scripts/assert-design-tokens.mjs",
         "lint": "eslint resources/js --max-warnings=0",
         "lint:fix": "eslint resources/js --fix",
         "format": "prettier --write resources/js resources/css",

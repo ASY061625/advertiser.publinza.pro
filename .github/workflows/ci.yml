@@ -49,3 +49,6 @@ jobs:
 
             - name: Assert the surface bundles stay isolated
               run: npm run verify:bundles
+
+            - name: Assert every design-system class resolves
+              run: npm run verify:tokens

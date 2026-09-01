@@ -17,10 +17,10 @@ export function AppLayout({ title, children }: { title: string; children: ReactN
     const [collapsed, setCollapsed] = useState(false);
 
     return (
-        <div className="min-h-screen bg-surface-canvas">
+        <div className="min-h-screen bg-canvas">
             <aside
                 className={cn(
-                    'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-ink-300 bg-surface-card',
+                    'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-ink-300 bg-card',
                     collapsed ? 'w-sidebar-collapsed' : 'w-sidebar',
                 )}
             >
@@ -37,7 +37,7 @@ export function AppLayout({ title, children }: { title: string; children: ReactN
                                 href={item.href}
                                 className={cn(
                                     'rounded-button px-3 py-2 font-sora text-base font-medium',
-                                    active ? 'bg-brand-50 text-brand' : 'text-ink-700 hover:bg-surface-sunken',
+                                    active ? 'bg-brand-subtle text-brand' : 'text-ink-700 hover:bg-sunken',
                                 )}
                             >
                                 {collapsed ? item.label.charAt(0) : item.label}
@@ -55,10 +55,10 @@ export function AppLayout({ title, children }: { title: string; children: ReactN
             </aside>
 
             <div className={cn(collapsed ? 'pl-sidebar-collapsed' : 'pl-sidebar')}>
-                <header className="sticky top-0 z-30 flex h-header items-center justify-between border-b border-ink-300 bg-surface-card px-6">
+                <header className="sticky top-0 z-30 flex h-header items-center justify-between border-b border-ink-300 bg-card px-6">
                     <h1 className="font-sora text-lg font-semibold text-ink-900">{title}</h1>
                     <div className="flex items-center gap-4">
-                        <span className="tabular rounded-pill bg-gold-50 px-3 py-1 text-sm text-[#B45309]">
+                        <span className="tabular rounded-pill bg-gold-subtle px-3 py-1 text-sm text-[#B45309]">
                             Balance {money(props.balanceMinorUnits)}
                         </span>
                         <span className="text-sm text-ink-500">{props.auth.user?.name}</span>

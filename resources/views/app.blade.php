@@ -12,7 +12,7 @@
         @vite(['resources/js/advertiser/main.tsx'])
         @inertiaHead
     </head>
-    <body class="min-h-screen bg-surface-canvas font-sans text-base text-ink-700">
+    <body class="min-h-screen bg-canvas font-sans text-base text-ink-700">
         @inertia
     </body>
 </html>

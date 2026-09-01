@@ -47,6 +47,32 @@ export default tseslint.config(
         rules: { 'no-restricted-imports': 'off' },
     },
     {
+        // QuantBar is the catalog's signature treatment and means nothing
+        // outside it. This makes "catalog only" enforceable rather than a
+        // comment someone can miss.
+        files: ['resources/js/**/*.tsx'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: 'JSXOpeningElement[name.name="QuantBar"]',
+                    message:
+                        'QuantBar is used only in the catalog. Use a plain number, or StatCard for a headline metric.',
+                },
+            ],
+        },
+    },
+    {
+        // The catalog itself, the component's own definition, and the gallery
+        // that documents it.
+        files: [
+            'resources/js/advertiser/Pages/Catalog/**/*.tsx',
+            'resources/js/shared/ui/QuantBar.tsx',
+            'resources/js/advertiser/Components/design-system/**/*.tsx',
+        ],
+        rules: { 'no-restricted-syntax': 'off' },
+    },
+    {
         files: ['*.config.{js,ts}', 'vite.config.ts', 'tailwind.config.ts'],
         languageOptions: { globals: { ...globals.node } },
     },

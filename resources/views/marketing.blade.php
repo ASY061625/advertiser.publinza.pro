@@ -13,7 +13,7 @@
         @vite(['resources/js/marketing/main.tsx'])
         @inertiaHead
     </head>
-    <body class="min-h-screen bg-surface-card font-sans text-md text-ink-700">
+    <body class="min-h-screen bg-card font-sans text-md text-ink-700">
         @inertia
     </body>
 </html>

@@ -16,7 +16,7 @@ export default defineConfig({
     plugins: [
         laravel({
             input: [
-                'resources/css/app.css',
+                'resources/css/globals.css',
                 'resources/js/marketing/main.tsx',
                 'resources/js/advertiser/main.tsx',
                 'resources/js/admin/main.tsx',

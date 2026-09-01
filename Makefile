@@ -88,6 +88,7 @@ test: ## Run every check: Pest, PHPStan, Pint, ESLint, Prettier, tsc, bundle iso
 	npm run typecheck
 	npm run build
 	npm run verify:bundles
+	npm run verify:tokens
 
 .PHONY: pest
 pest: ## Run the PHP test suite only

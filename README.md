@@ -149,37 +149,86 @@ returns an Inertia response or a redirect. Anything longer than that belongs in
 
 ## Design system
 
-Tokens live in `resources/css/app.css` as CSS custom properties and are aliased in
-`tailwind.config.ts`. Do not put raw hex values in components.
+The component library lives in `resources/js/shared/ui` and is imported from the barrel:
 
-- **Type** — Sora for headings and UI chrome, Inter for body and tables, with
-  `font-variant-numeric: tabular-nums` on numeric cells so price columns align. Scale:
-  12/13/14/16/20/26/34/44. Sentence case throughout; no all-caps labels.
+```tsx
+import { Button, Table, QuantBar, useToast } from '@shared/ui';
+```
+
+Tokens are declared once as CSS custom properties in `resources/css/globals.css` and
+aliased in `tailwind.config.ts` under semantic names — `bg-canvas`, `text-ink-700`,
+`border-subtle`, `bg-status-posted-bg`. **Components never contain a raw hex value.**
+
+Because the tokens are hex, Tailwind's opacity modifiers (`bg-card/60`) cannot apply to
+them. Where a translucent surface is genuinely needed there is a dedicated token instead
+(`bg-overlay`, `bg-row-hover`).
+
+### Preview route
+
+`/design-system` on the advertiser surface renders every component in every state —
+default, hover, focus-visible, active, disabled, loading and error. Light theme only.
+
+```bash
+make dev   # then open http://app.publinza.localhost/design-system
+```
+
+It sits outside every auth guard so it opens without an account, and it is not registered
+at all when `APP_ENV=production` (see the guard in `routes/app.php`).
+
+### Rules the system enforces
+
+- **Type** — Sora 600/500 for headings and UI, Inter for body and tables. The `.num`
+  utility carries `font-variant-numeric: tabular-nums` and goes on every numeric cell, so
+  price columns line up. Scale: 12/13/14/16/20/26/34/44. Sentence case throughout — no
+  all-caps labels, no eyebrow labels above headings, no arrow characters glued to button
+  text.
 - **Layout** — sidebar 248px (68px collapsed), 60px sticky header, 1440px content
-  max-width on a 12-column grid, 24px gutters. Radius 8px cards and inputs, 6px buttons,
-  999px pills. One shadow, `shadow-card`.
-- **Tables** — 56px rows in the catalog, 48px elsewhere, sticky header row and sticky first
-  column on horizontal scroll.
-- **Motion** — only in response to a user action: drawer 180ms, row expand 150ms, toast
-  200ms. `prefers-reduced-motion` is honoured globally in `app.css`. No scroll-triggered
-  entrance animations.
+  max-width, 24px gutters. Radius 8px cards and inputs, 6px buttons, 999px pills. One
+  shadow token, `shadow-card`.
+- **Tables** — 48px rows everywhere; the catalog uses 56px to make room for the
+  quant-bars. Sticky header, optional sticky first column, sortable columns, row
+  selection.
+- **Focus** — a 2px `--brand-blue` ring at 2px offset on every interactive element, set
+  once globally on `:focus-visible` rather than per component.
+- **Motion** — only in response to a user action: row expand 150ms, drawer 180ms, toast
+  200ms. `prefers-reduced-motion` flattens every duration via one global rule. No
+  scroll-triggered entrance animations.
 - **Voice** — plain verbs, active voice. Buttons name the outcome ("Add to cart", "Top up
-  balance"), and the resulting toast reports it in the past tense ("Published"). Empty
-  states give one instruction and one button, never an apology.
+  balance") and the resulting toast reports it in the past tense ("Published"). Empty
+  states give one line of direction and one button, never an apology. Errors say what
+  happened and what to do next.
+
+### Components
+
+Button, IconButton, Input, NumberInput, Textarea, Select, MultiSelect, Combobox,
+RangeSlider, Checkbox, RadioGroup, Switch, DatePicker, DateRangePicker, Badge, Avatar,
+Card, StatCard, Tabs, Table, DataGridToolbar, Pagination, Drawer, Modal, Dropdown, Tooltip,
+Toast, Skeleton, EmptyState, Alert, Breadcrumb, ProgressBar and QuantBar.
+
+Status colours are fixed product-wide and owned by `Badge` — the `StatusKey` union and its
+colours live in one file so the vocabulary and its palette cannot drift apart.
+
+Dates move through the system as `YYYY-MM-DD` strings, never `Date` objects: a calendar day
+has no time and no zone, and parsing one into a `Date` invites an off-by-one for anyone
+west of UTC.
 
 ### The signature element
 
-In the catalog, every quantitative cell — traffic, DR, DA, spam score — renders as a number
-plus a thin proportional bar (`shared/components/QuantBar.tsx`), so a buyer scanning 200
-rows reads shape before digits.
+In the catalog, every quantitative cell — traffic, DR, DA, spam score — renders as tabular
+digits with a 3px proportional bar beneath (`shared/ui/QuantBar.tsx`), so a buyer scanning
+200 rows reads shape before digits. The bar is `--brand-blue`, turning `--teal` once the
+value lands in the top quartile of the range.
 
-The bars scale against the whole approved catalog's min/max, not the visible page —
-`GetCatalogRanges` computes those ranges and caches them, and `ReviewSite` busts that cache
-when a site is approved or rejected. Scaling per page would rescale every bar on each
-pagination click and make two pages incomparable.
+The bars scale against the whole approved catalog's min/max, not the visible page:
+`GetCatalogRanges` computes and caches those ranges, and `ReviewSite` busts the cache when a
+site is approved or rejected. Scaling per page would rescale every bar on each pagination
+click and make two pages incomparable.
 
-Spam score passes `inverted` because low is good. **Nothing else in the product uses this
-treatment** — keep it out of dashboards, drawers and admin tables.
+Spam score passes `inverted` because low is good.
+
+**Nothing else in the product uses this treatment.** That is enforced, not just documented:
+an ESLint `no-restricted-syntax` rule fails the build on a `<QuantBar>` outside the catalog,
+the component's own file, and the gallery that documents it.
 
 ---
 

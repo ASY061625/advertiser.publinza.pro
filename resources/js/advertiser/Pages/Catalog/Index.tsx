@@ -1,90 +1,136 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { useState } from 'react';
 import { AppLayout } from '../../Layouts/AppLayout';
-import { Button } from '@shared/components/Button';
-import { EmptyState } from '@shared/components/EmptyState';
-import { QuantBar } from '@shared/components/QuantBar';
-import { Table, Td, Th } from '@shared/components/Table';
+import {
+    Button,
+    DataGridToolbar,
+    EmptyState,
+    Pagination,
+    QuantBar,
+    SearchIcon,
+    Table,
+    type Column,
+    type SortState,
+} from '@shared/ui';
 import { money } from '@shared/lib/format';
 import type { CatalogRanges, CatalogSite, Paginated } from '@shared/types';
 
 interface CatalogIndexProps {
     sites: Paginated<CatalogSite>;
     ranges: CatalogRanges;
+    filters: { q?: string };
 }
 
-export default function CatalogIndex({ sites, ranges }: CatalogIndexProps) {
+export default function CatalogIndex({ sites, ranges, filters }: CatalogIndexProps) {
+    const [search, setSearch] = useState(filters.q ?? '');
+    const [selected, setSelected] = useState<string[]>([]);
+    const [sort, setSort] = useState<SortState>({ column: 'traffic', direction: 'desc' });
+
+    /**
+     * The catalog is the one place QuantBar is used. Every quantitative cell
+     * gets a number plus a bar scaled against the whole catalog's range, so a
+     * buyer scanning 200 rows reads shape before digits.
+     */
+    const columns: Column<CatalogSite>[] = [
+        {
+            id: 'domain',
+            header: 'Site',
+            cell: (site) => (
+                <span>
+                    <span className="font-medium text-ink-900">{site.domain}</span>
+                    <span className="ml-2 text-sm text-ink-500">{site.language}</span>
+                </span>
+            ),
+        },
+        { id: 'category', header: 'Category', cell: (site) => site.category },
+        {
+            id: 'traffic',
+            header: 'Traffic',
+            numeric: true,
+            sortable: true,
+            cell: (site) => <QuantBar value={site.traffic} range={ranges.traffic} />,
+        },
+        {
+            id: 'domain_rating',
+            header: 'DR',
+            numeric: true,
+            sortable: true,
+            cell: (site) => <QuantBar value={site.domainRating} range={ranges.domainRating} format={String} />,
+        },
+        {
+            id: 'domain_authority',
+            header: 'DA',
+            numeric: true,
+            cell: (site) => <QuantBar value={site.domainAuthority} range={ranges.domainAuthority} format={String} />,
+        },
+        {
+            id: 'spam_score',
+            header: 'Spam score',
+            numeric: true,
+            cell: (site) => (
+                <QuantBar value={site.spamScore} range={ranges.spamScore} inverted format={(v) => `${v}%`} />
+            ),
+        },
+        {
+            id: 'price',
+            header: 'Price',
+            numeric: true,
+            sortable: true,
+            cell: (site) => <span className="num font-medium text-ink-900">{money(site.priceMinorUnits)}</span>,
+        },
+        {
+            id: 'actions',
+            header: '',
+            width: '120px',
+            cell: () => <Button size="sm">Add to cart</Button>,
+        },
+    ];
+
     return (
         <AppLayout title="Catalog">
             <Head title="Catalog" />
 
-            {sites.data.length === 0 ? (
-                <EmptyState
-                    instruction="No sites match these filters. Widen the traffic or price range to see more."
-                    action={<Button variant="secondary">Clear filters</Button>}
+            <div className="flex flex-col gap-4">
+                <DataGridToolbar
+                    search={search}
+                    onSearchChange={setSearch}
+                    searchPlaceholder="Search sites"
+                    selectedCount={selected.length}
+                    onClearSelection={() => setSelected([])}
+                    bulkActions={<Button size="sm">Add {selected.length} to cart</Button>}
                 />
-            ) : (
-                <Table density="catalog" stickyFirstColumn>
-                    <thead>
-                        <tr>
-                            <Th>Site</Th>
-                            <Th>Category</Th>
-                            <Th numeric>Traffic</Th>
-                            <Th numeric>DR</Th>
-                            <Th numeric>DA</Th>
-                            <Th numeric>Spam score</Th>
-                            <Th numeric>Price</Th>
-                            <Th>&nbsp;</Th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sites.data.map((site) => (
-                            <tr key={site.id} className="hover:bg-brand-50">
-                                <Td>
-                                    <span className="font-medium text-ink-900">{site.domain}</span>
-                                    <span className="ml-2 text-sm text-ink-500">{site.language}</span>
-                                </Td>
-                                <Td>{site.category}</Td>
-                                <Td numeric>
-                                    <QuantBar value={site.traffic} range={ranges.traffic} className="items-end" />
-                                </Td>
-                                <Td numeric>
-                                    <QuantBar
-                                        value={site.domainRating}
-                                        range={ranges.domainRating}
-                                        format={String}
-                                        className="items-end"
-                                    />
-                                </Td>
-                                <Td numeric>
-                                    <QuantBar
-                                        value={site.domainAuthority}
-                                        range={ranges.domainAuthority}
-                                        format={String}
-                                        className="items-end"
-                                    />
-                                </Td>
-                                <Td numeric>
-                                    <QuantBar
-                                        value={site.spamScore}
-                                        range={ranges.spamScore}
-                                        inverted
-                                        format={(value) => `${value}%`}
-                                        className="items-end"
-                                    />
-                                </Td>
-                                <Td numeric>
-                                    <span className="tabular font-medium text-ink-900">
-                                        {money(site.priceMinorUnits)}
-                                    </span>
-                                </Td>
-                                <Td>
-                                    <Button>Add to cart</Button>
-                                </Td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </Table>
-            )}
+
+                <Table
+                    density="catalog"
+                    stickyFirstColumn
+                    columns={columns}
+                    rows={sites.data}
+                    rowKey={(site) => String(site.id)}
+                    sort={sort}
+                    onSortChange={setSort}
+                    selectedKeys={selected}
+                    onSelectionChange={setSelected}
+                    empty={
+                        <EmptyState
+                            illustration={<SearchIcon size={32} />}
+                            direction="No sites match these filters. Widen the traffic or price range to see more."
+                            action={
+                                <Button variant="secondary" onClick={() => setSearch('')}>
+                                    Clear filters
+                                </Button>
+                            }
+                        />
+                    }
+                />
+
+                <Pagination
+                    page={sites.current_page}
+                    pageCount={sites.last_page}
+                    total={sites.total}
+                    perPage={sites.per_page}
+                    onPageChange={(page) => router.get('/catalog', { page }, { preserveState: true })}
+                />
+            </div>
         </AppLayout>
     );
 }

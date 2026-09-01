@@ -23,6 +23,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+/*
+ * The design system gallery. Registered outside every guard so it can be opened
+ * without an account, and never registered in production at all.
+ */
+if (! app()->isProduction()) {
+    Route::get('/design-system', fn () => inertia('DesignSystem'))->name('design-system');
+}
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:5,1');

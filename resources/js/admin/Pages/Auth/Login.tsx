@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { Button } from '@shared/components/Button';
+import { Button } from '@shared/ui';
 
 export default function AdminLogin() {
     const form = useForm({ email: '', password: '' });
@@ -14,7 +14,7 @@ export default function AdminLogin() {
         <div className="flex min-h-screen items-center justify-center bg-ink-900 px-6">
             <Head title="Admin sign in" />
 
-            <form onSubmit={submit} className="w-full max-w-sm rounded-card bg-surface-card p-6 shadow-card">
+            <form onSubmit={submit} className="w-full max-w-sm rounded-card bg-card p-6 shadow-card">
                 <h1 className="font-sora text-lg font-semibold text-ink-900">Admin sign in</h1>
 
                 <label className="mt-6 block text-sm text-ink-500" htmlFor="email">

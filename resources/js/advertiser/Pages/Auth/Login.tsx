@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { Button } from '@shared/components/Button';
+import { Button } from '@shared/ui';
 
 export default function Login() {
     const form = useForm({ email: '', password: '', remember: false });
@@ -11,7 +11,7 @@ export default function Login() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-surface-canvas px-6">
+        <div className="flex min-h-screen items-center justify-center bg-canvas px-6">
             <Head title="Sign in" />
 
             <form onSubmit={submit} className="card w-full max-w-sm p-6">

@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Design tokens
+   --------------------------------------------------------------------------
+   The single source of truth for the Publinza design system. Every value is
+   mirrored in tailwind.config.ts under a semantic name (bg-canvas,
+   text-ink-700, border-subtle, …). Components reference the semantic Tailwind
+   name, never a raw hex value and never a token directly.
+   ========================================================================== */
+
+@layer base {
+    :root {
+        /* --- Brand ------------------------------------------------------- */
+        --brand-blue: #1d4ed8; /* primary actions, active nav, links */
+        --brand-blue-700: #1e40af; /* hover/pressed */
+        --brand-blue-50: #eff4ff; /* selected rows, active nav pill */
+        --teal: #14b8a6; /* positive metrics, published, growth */
+        --teal-50: #ecfdf9;
+        --gold: #f59e0b; /* wallet, balance, frozen funds, pending */
+        --gold-50: #fff8eb;
+
+        /* --- Ink & surface — navy-tinted, never pure black/grey ----------- */
+        --ink-900: #0b1b33; /* headings, primary numerals */
+        --ink-700: #2b3a52; /* body */
+        --ink-500: #64748b; /* secondary labels */
+        --ink-300: #cbd5e1; /* borders */
+        --surface-canvas: #f5f8fc; /* app background */
+        --surface-card: #ffffff;
+        --surface-sunken: #edf2f9; /* table headers, empty states */
+
+        /* --- Semantic ---------------------------------------------------- */
+        --success: #0f9d74;
+        --success-bg: #e7f8f2;
+        --warning: #b45309;
+        --warning-bg: #fff4e0;
+        --danger: #dc2626;
+        --danger-bg: #feecec;
+        --info: #1d4ed8;
+        --info-bg: #eff4ff;
+
+        /* --- Status fills, fixed product-wide ---------------------------- */
+        --status-draft-bg: #edf2f9;
+        --status-draft-fg: var(--ink-500);
+        --status-new-bg: var(--info-bg);
+        --status-new-fg: var(--brand-blue);
+        --status-progress-bg: var(--gold-50);
+        --status-progress-fg: #b45309;
+        --status-review-bg: #f3e8ff;
+        --status-review-fg: #7e22ce;
+        --status-posted-bg: var(--teal-50);
+        --status-posted-fg: var(--success);
+        --status-frozen-bg: #e2e8f0;
+        --status-frozen-fg: var(--ink-700);
+        --status-rejected-bg: var(--danger-bg);
+        --status-rejected-fg: var(--danger);
+        --status-refunded-bg: #fff8eb;
+        --status-refunded-fg: #92400e;
+
+        /* --- Derived surfaces -------------------------------------------- */
+        /* Pre-mixed rather than alpha-composited: the colour tokens are hex,
+           so Tailwind opacity modifiers cannot apply to them. */
+        --overlay: rgba(11, 27, 51, 0.45);
+        --brand-pressed: #1a3aa8; /* one step past --brand-blue-700 */
+        --danger-pressed: #b91c1c;
+        --row-hover: #f8fafd;
+
+        /* --- The one shadow ---------------------------------------------- */
+        --shadow-card: 0 1px 2px rgba(11, 27, 51, 0.06), 0 4px 12px rgba(11, 27, 51, 0.04);
+
+        /* --- Motion ------------------------------------------------------- */
+        /* Motion happens only in response to a user action, 150–200ms. */
+        --motion-fast: 150ms; /* row expand */
+        --motion-drawer: 180ms; /* drawer slide */
+        --motion-toast: 200ms; /* toast */
+        --ease: cubic-bezier(0.2, 0, 0.2, 1);
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        @apply bg-canvas text-base text-ink-700 antialiased;
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-sora font-semibold text-ink-900;
+    }
+
+    /* Every interactive element gets the same ring: 2px brand blue, 2px offset.
+       Declared once here so no component has to remember it. */
+    :focus-visible {
+        outline: 2px solid var(--brand-blue);
+        outline-offset: 2px;
+        border-radius: inherit;
+    }
+
+    /* Motion is never forced on someone who has asked for less of it. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+@layer utilities {
+    /* Applied to every numeric cell so price and metric columns align down the
+       table. Paired with Inter, which has proper tabular figures. */
+    .num {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: 'tnum' 1;
+    }
+
+    /* Visible to screen readers only — used for live regions and labels that
+       carry meaning the visual design conveys another way. */
+    .sr-only-focusable:not(:focus):not(:focus-within) {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+}
+
+@layer components {
+    /* Sticky table chrome. Kept in CSS rather than utility soup because the
+       z-index relationship between the header, the first column and their
+       intersection has to stay consistent. */
+    .table-sticky-head thead th {
+        @apply sticky top-0 z-20 bg-sunken;
+    }
+
+    .table-sticky-col tbody td:first-child,
+    .table-sticky-col tbody th:first-child {
+        @apply sticky left-0 z-10 bg-card;
+    }
+
+    .table-sticky-col thead th:first-child {
+        @apply z-30;
+    }
+}

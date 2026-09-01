@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { Button } from '@shared/components/Button';
+import { Button } from '@shared/ui';
 
 export default function TwoFactor() {
     const form = useForm({ code: '' });
@@ -14,7 +14,7 @@ export default function TwoFactor() {
         <div className="flex min-h-screen items-center justify-center bg-ink-900 px-6">
             <Head title="Two-factor code" />
 
-            <form onSubmit={submit} className="w-full max-w-sm rounded-card bg-surface-card p-6 shadow-card">
+            <form onSubmit={submit} className="w-full max-w-sm rounded-card bg-card p-6 shadow-card">
                 <h1 className="font-sora text-lg font-semibold text-ink-900">Enter your two-factor code</h1>
                 <p className="mt-2 text-base text-ink-500">Open your authenticator app and enter the current code.</p>
 

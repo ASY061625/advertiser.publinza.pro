@@ -17,13 +17,13 @@ export default function Home({ siteCount }: { siteCount: number }) {
                 <div className="mt-8 flex gap-3">
                     <a
                         href="https://app.publinza.pro/register"
-                        className="rounded-button bg-brand px-5 py-2.5 font-sora text-md font-medium text-white hover:bg-brand-700"
+                        className="rounded-button bg-brand px-5 py-2.5 font-sora text-md font-medium text-white hover:bg-brand-hover"
                     >
                         Create an account
                     </a>
                     <Link
                         href="/how-it-works"
-                        className="rounded-button border border-ink-300 px-5 py-2.5 font-sora text-md font-medium text-ink-700 hover:bg-surface-sunken"
+                        className="rounded-button border border-ink-300 px-5 py-2.5 font-sora text-md font-medium text-ink-700 hover:bg-sunken"
                     >
                         See how it works
                     </Link>

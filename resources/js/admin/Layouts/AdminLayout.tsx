@@ -15,7 +15,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
     const { props, url } = usePage<AdminSharedProps>();
 
     return (
-        <div className="min-h-screen bg-surface-canvas">
+        <div className="min-h-screen bg-canvas">
             <aside className="fixed inset-y-0 left-0 z-40 flex w-sidebar flex-col border-r border-ink-300 bg-ink-900">
                 <div className="flex h-header items-center px-5 font-sora text-md font-semibold text-white">
                     Publinza admin
@@ -37,7 +37,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
             </aside>
 
             <div className="pl-sidebar">
-                <header className="sticky top-0 z-30 flex h-header items-center justify-between border-b border-ink-300 bg-surface-card px-6">
+                <header className="sticky top-0 z-30 flex h-header items-center justify-between border-b border-ink-300 bg-card px-6">
                     <h1 className="font-sora text-lg font-semibold text-ink-900">{title}</h1>
                     <span className="text-sm text-ink-500">
                         {props.auth.admin?.name} · {props.auth.admin?.role}
