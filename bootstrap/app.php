@@ -6,7 +6,6 @@ use App\Http\Middleware\EnsureAdminIsAuthenticated;
 use App\Http\Middleware\EnsureTwoFactorIsConfirmed;
 use App\Http\Middleware\HandleAdminInertiaRequests;
 use App\Http\Middleware\HandleAdvertiserInertiaRequests;
-use App\Http\Middleware\HandleMarketingInertiaRequests;
 use App\Http\Middleware\SecureAdminHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
-            // 1. Marketing site — publinza.pro, public.
-            Route::middleware(['web', HandleMarketingInertiaRequests::class])
+            // 1. Marketing site — publinza.pro, public. Server-rendered Blade,
+            //    so there is no Inertia middleware on this surface at all.
+            Route::middleware('web')
                 ->domain(config('publinza.domains.marketing'))
                 ->group(base_path('routes/marketing.php'));
 

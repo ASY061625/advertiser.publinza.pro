@@ -32,6 +32,18 @@ return [
 
     'admin_prefix' => env('ADMIN_PATH_PREFIX', 'asylogin'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Advertiser app URL
+    |--------------------------------------------------------------------------
+    |
+    | Every "Log in" and "Create account" link on the marketing site points
+    | here. Kept as a full URL because the two surfaces are different hosts.
+    |
+    */
+
+    'app_url' => env('APP_SUBDOMAIN_URL', 'https://app.publinza.pro'),
+
     'force_https' => (bool) env('FORCE_HTTPS', false),
 
     /*

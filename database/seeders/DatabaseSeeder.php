@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             WebsiteSeeder::class,
             DemoAdvertiserSeeder::class,
+            BlogSeeder::class,
         ]);
     }
 }

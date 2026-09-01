@@ -3,5 +3,10 @@ Allow: /
 
 # The admin panel is unlisted; keep it out of every index.
 Disallow: /asylogin
+Disallow: /asylogin/
+
+# Search result pages add nothing to an index and burn crawl budget.
+Disallow: /catalog?q=
+Disallow: /*?q=$
 
 Sitemap: https://publinza.pro/sitemap.xml

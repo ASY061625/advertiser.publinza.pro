@@ -140,6 +140,46 @@
 }
 
 @layer components {
+    /* Long-form article body.
+
+       Blog HTML is authored by our editors and carries no classes, so it is
+       styled by element here rather than with utilities at the call site. */
+    .prose-publinza > * + * {
+        @apply mt-5;
+    }
+
+    .prose-publinza h2 {
+        @apply mt-10 font-sora text-lg font-semibold text-ink-900;
+    }
+
+    .prose-publinza h3 {
+        @apply mt-8 font-sora text-md font-semibold text-ink-900;
+    }
+
+    .prose-publinza p {
+        @apply text-md leading-relaxed text-ink-700;
+    }
+
+    .prose-publinza a {
+        @apply text-brand underline;
+    }
+
+    .prose-publinza ul {
+        @apply flex list-disc flex-col gap-2 pl-5 text-md leading-relaxed text-ink-700;
+    }
+
+    .prose-publinza ol {
+        @apply flex list-decimal flex-col gap-2 pl-5 text-md leading-relaxed text-ink-700;
+    }
+
+    .prose-publinza blockquote {
+        @apply border-l-2 border-brand pl-4 text-md italic text-ink-700;
+    }
+
+    .prose-publinza code {
+        @apply rounded bg-sunken px-1 py-0.5 text-base;
+    }
+
     /* Sticky table chrome. Kept in CSS rather than utility soup because the
        z-index relationship between the header, the first column and their
        intersection has to stay consistent. */

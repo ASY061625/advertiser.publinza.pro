@@ -8,7 +8,9 @@
  */
 import { readFileSync } from 'node:fs';
 
+// Marketing is Blade plus a vanilla island; the other two are Inertia bundles.
 const SURFACES = ['marketing', 'advertiser', 'admin'];
+const ENTRY = { marketing: 'main.ts', advertiser: 'main.tsx', admin: 'main.tsx' };
 const manifest = JSON.parse(readFileSync('public/build/manifest.json', 'utf8'));
 
 function reachable(entry) {
@@ -32,7 +34,7 @@ function reachable(entry) {
 let failed = false;
 
 for (const surface of SURFACES) {
-    const entry = `resources/js/${surface}/main.tsx`;
+    const entry = `resources/js/${surface}/${ENTRY[surface]}`;
 
     if (!manifest[entry]) {
         console.error(`✗ ${surface}: entry ${entry} is missing from the manifest.`);

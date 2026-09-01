@@ -15,6 +15,14 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    /*
+    | Injected by the marketing site only after a visitor accepts analytics
+    | cookies. Leave empty to ship no analytics at all.
+    */
+    'analytics' => [
+        'script' => env('ANALYTICS_SCRIPT_URL'),
+    ],
+
     'ahrefs' => [
         'token' => env('AHREFS_API_TOKEN'),
     ],

@@ -6,18 +6,19 @@ import path from 'node:path';
 /**
  * Three independent entry points, one per surface.
  *
- * Each entry resolves its Inertia pages with an `import.meta.glob` rooted in its
- * own directory (see `resources/js/<surface>/main.tsx`), so the admin page graph
- * is never reachable from the advertiser entry and never lands in its bundle.
- * Only genuinely shared code (React, Inertia, `resources/js/shared`) is hoisted
- * into common chunks.
+ * Marketing is server-rendered Blade, so its entry is a plain TypeScript island
+ * carrying no framework at all. The advertiser and admin entries are Inertia,
+ * and each resolves its pages with an `import.meta.glob` rooted in its own
+ * directory, so the admin page graph is never reachable from the advertiser
+ * entry and never lands in its bundle. Only genuinely shared code (React,
+ * Inertia, `resources/js/shared`) is hoisted into common chunks.
  */
 export default defineConfig({
     plugins: [
         laravel({
             input: [
                 'resources/css/globals.css',
-                'resources/js/marketing/main.tsx',
+                'resources/js/marketing/main.ts',
                 'resources/js/advertiser/main.tsx',
                 'resources/js/admin/main.tsx',
             ],

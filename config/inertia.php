@@ -16,7 +16,6 @@ return [
     'testing' => [
         'ensure_pages_exist' => true,
         'page_paths' => [
-            resource_path('js/marketing/Pages'),
             resource_path('js/advertiser/Pages'),
             resource_path('js/admin/Pages'),
         ],

@@ -61,7 +61,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
             aria-busy={loading || undefined}
             aria-invalid={error || undefined}
             className={cn(
-                'inline-flex select-none items-center justify-center rounded-button font-sora font-medium',
+                'inline-flex select-none items-center justify-center whitespace-nowrap rounded-button font-sora font-medium',
                 'transition-colors duration-fast ease-standard',
                 'disabled:pointer-events-none disabled:opacity-50',
                 VARIANTS[variant],
