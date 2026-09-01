@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Marketing;
 
-use App\Domain\Catalog\Models\Country;
 use App\Domain\Catalog\Models\Language;
 use App\Domain\Catalog\Models\Website;
 use App\Domain\Catalog\Models\WebsiteCategory;

@@ -31,7 +31,18 @@ return new class extends Migration
             $table->softDeletes();
         });
 
-        Schema::create('password_resets', function (Blueprint $table): void {
+        // Named for what config/auth.php asks for. Advertisers and admins get
+        // separate tables rather than sharing one keyed on email: the two live
+        // in different tables and may share an address, and a single shared
+        // table would let a token issued for the advertiser broker be redeemed
+        // against the admin one.
+        Schema::create('password_reset_tokens', function (Blueprint $table): void {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('admin_password_reset_tokens', function (Blueprint $table): void {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
@@ -64,7 +75,8 @@ return new class extends Migration
     {
         Schema::dropIfExists('login_attempts');
         Schema::dropIfExists('sessions');
-        Schema::dropIfExists('password_resets');
+        Schema::dropIfExists('admin_password_reset_tokens');
+        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');
     }
 };

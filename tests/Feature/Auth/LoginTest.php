@@ -13,7 +13,7 @@ function advertiser(array $attributes = []): User
 {
     return User::factory()->create([
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
         'email_verified_at' => now(),
         ...$attributes,
     ]);
@@ -28,7 +28,7 @@ it('sends a returning advertiser to the dashboard', function (): void {
 
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ])->assertRedirect(advertiserUrl('/dashboard'));
 
     $this->assertAuthenticated();
@@ -41,7 +41,7 @@ it('sends a first-ever sign-in to project creation instead', function (): void {
 
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ])->assertRedirect(advertiserUrl('/projects/create'));
 });
 
@@ -50,7 +50,7 @@ it('stamps the sign-in so the next one is not treated as the first', function ()
 
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ]);
 
     expect($user->fresh()->last_login_at)->not->toBeNull()
@@ -65,7 +65,7 @@ it('regenerates the session id on sign-in', function (): void {
 
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ]);
 
     // A session fixed before sign-in is worthless afterwards.
@@ -97,7 +97,7 @@ it('refuses a suspended account with a reason', function (): void {
 
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ])->assertSessionHasErrors('email');
 
     $this->assertGuest();
@@ -110,7 +110,7 @@ it('logs every attempt with its outcome, address and browser', function (): void
         ->post(advertiserUrl('/login'), ['email' => 'dana@northwind.test', 'password' => 'wrong']);
 
     $this->withHeader('User-Agent', 'PublinzaTest/1.0')
-        ->post(advertiserUrl('/login'), ['email' => 'dana@northwind.test', 'password' => 'correct-horse-9']);
+        ->post(advertiserUrl('/login'), ['email' => 'dana@northwind.test', 'password' => 'Correct-Horse-9']);
 
     $attempts = LoginAttempt::query()->orderBy('id')->get();
 
@@ -133,7 +133,7 @@ it('locks the account for 15 minutes after five failures and emails about it', f
     // The correct password does not get in while the lockout stands.
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ])->assertSessionHasErrors('email');
 
     $this->assertGuest();
@@ -170,7 +170,7 @@ it('clears the lockout allowance on a successful sign-in', function (): void {
 
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ])->assertRedirect();
 
     $this->post(advertiserUrl('/logout'));
@@ -182,7 +182,7 @@ it('clears the lockout allowance on a successful sign-in', function (): void {
 
     $this->post(advertiserUrl('/login'), [
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
     ])->assertRedirect(advertiserUrl('/dashboard'));
 });
 

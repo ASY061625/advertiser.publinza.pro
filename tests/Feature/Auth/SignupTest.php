@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Domain\Catalog\Models\Country;
-use App\Domain\Identity\Models\LoginAttempt;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Event;
@@ -16,8 +15,8 @@ it('creates an advertiser with a zero-balance wallet and a cart', function (): v
     $this->post(advertiserUrl('/signup'), [
         'name' => 'Dana Okafor',
         'email' => 'Dana@Northwind.test',
-        'password' => 'correct-horse-9',
-        'password_confirmation' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
+        'password_confirmation' => 'Correct-Horse-9',
         'company' => 'Northwind Software',
         'country' => 'IE',
         'referrer_source' => 'referral',
@@ -45,15 +44,15 @@ it('hashes the password with argon2id', function (): void {
     $this->post(advertiserUrl('/signup'), [
         'name' => 'Dana Okafor',
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
-        'password_confirmation' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
+        'password_confirmation' => 'Correct-Horse-9',
         'terms' => true,
     ]);
 
     $user = User::query()->firstWhere('email', 'dana@northwind.test');
 
     expect($user->password)->toStartWith('$argon2id$')
-        ->and(Hash::check('correct-horse-9', $user->password))->toBeTrue();
+        ->and(Hash::check('Correct-Horse-9', $user->password))->toBeTrue();
 });
 
 it('signs the new advertiser in but leaves them unverified', function (): void {
@@ -62,8 +61,8 @@ it('signs the new advertiser in but leaves them unverified', function (): void {
     $this->post(advertiserUrl('/signup'), [
         'name' => 'Dana Okafor',
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
-        'password_confirmation' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
+        'password_confirmation' => 'Correct-Horse-9',
         'terms' => true,
     ]);
 
@@ -99,8 +98,8 @@ it('refuses a duplicate address and points to signing in', function (): void {
     $this->post(advertiserUrl('/signup'), [
         'name' => 'Dana Okafor',
         'email' => 'dana@northwind.test',
-        'password' => 'correct-horse-9',
-        'password_confirmation' => 'correct-horse-9',
+        'password' => 'Correct-Horse-9',
+        'password_confirmation' => 'Correct-Horse-9',
         'terms' => true,
     ])->assertSessionHasErrors(['email' => 'There is already an account with this address. Sign in instead, or reset the password.']);
 });

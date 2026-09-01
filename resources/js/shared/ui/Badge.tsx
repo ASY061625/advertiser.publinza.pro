@@ -21,8 +21,21 @@ const STATUS: Record<StatusKey, { label: string; className: string }> = {
 
 export const STATUS_KEYS = Object.keys(STATUS) as StatusKey[];
 
-export function Badge({ status, className }: { status: StatusKey; className?: string }) {
-    const { label, className: tone } = STATUS[status];
+interface BadgeProps {
+    status: StatusKey;
+    /**
+     * Overrides the chip's text, never its colour. Several post statuses share
+     * one colour on purpose — Completed reads in Posted's green, Cancelled in
+     * Rejected's red — so a surface that lists those statuses separately needs
+     * to name them without inventing a new hue. Leave it unset everywhere else.
+     */
+    label?: string;
+    className?: string;
+}
+
+export function Badge({ status, label: labelOverride, className }: BadgeProps) {
+    const { label: defaultLabel, className: tone } = STATUS[status];
+    const label = labelOverride ?? defaultLabel;
 
     return (
         <span

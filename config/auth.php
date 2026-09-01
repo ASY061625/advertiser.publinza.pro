@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+use App\Domain\Admin\Models\Admin;
+use App\Models\User;
 
 return [
 
@@ -35,12 +37,12 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => User::class,
         ],
 
         'admins' => [
             'driver' => 'eloquent',
-            'model' => App\Domain\Admin\Models\Admin::class,
+            'model' => Admin::class,
         ],
     ],
 
@@ -54,7 +56,9 @@ return [
 
         'admins' => [
             'provider' => 'admins',
-            'table' => 'password_reset_tokens',
+            // Its own table: see the migration. Sharing the advertiser table
+            // would make a token issued for one guard valid for the other.
+            'table' => 'admin_password_reset_tokens',
             'expire' => 15,
             'throttle' => 60,
         ],

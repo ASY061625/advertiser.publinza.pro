@@ -9,6 +9,7 @@ use App\Domain\Identity\Support\TwoFactor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Inertia\Response;
 
@@ -76,7 +77,7 @@ class TwoFactorSettingsController extends Controller
             'password.required' => 'Enter your password to turn two-factor off.',
         ]);
 
-        if (! \Illuminate\Support\Facades\Hash::check((string) $request->input('password'), $request->user()->password)) {
+        if (! Hash::check((string) $request->input('password'), $request->user()->password)) {
             throw ValidationException::withMessages([
                 'password' => 'That password does not match. Try again, or reset it if you have forgotten it.',
             ]);

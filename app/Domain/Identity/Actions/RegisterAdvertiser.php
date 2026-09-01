@@ -7,8 +7,8 @@ namespace App\Domain\Identity\Actions;
 use App\Domain\Billing\Models\Wallet;
 use App\Domain\Identity\DTOs\RegistrationData;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Models\User;
 use App\Domain\Trading\Models\Cart;
+use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\DB;
 

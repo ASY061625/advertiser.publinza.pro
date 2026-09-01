@@ -38,6 +38,8 @@
         --success-bg: #e7f8f2;
         --warning: #b45309;
         --warning-bg: #fff4e0;
+        /* The hover step for a warning-tinted row, e.g. an urgent deadline. */
+        --warning-bg-hover: #ffe9c4;
         --danger: #dc2626;
         --danger-bg: #feecec;
         --info: #1d4ed8;

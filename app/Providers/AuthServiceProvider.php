@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Admin\Policies\AdminPolicy;
 use App\Domain\Billing\Models\Wallet;
 use App\Domain\Billing\Policies\WalletPolicy;
 use App\Domain\Catalog\Models\Website;
@@ -15,7 +16,6 @@ use App\Domain\Posts\Policies\PostPolicy;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Policies\ProjectPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use App\Domain\Admin\Policies\AdminPolicy;
 use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider

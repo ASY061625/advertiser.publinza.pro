@@ -44,7 +44,11 @@ export default {
 
                 // --- Semantic ------------------------------------------------
                 success: { DEFAULT: 'var(--success)', bg: 'var(--success-bg)' },
-                warning: { DEFAULT: 'var(--warning)', bg: 'var(--warning-bg)' },
+                warning: {
+                    DEFAULT: 'var(--warning)',
+                    bg: 'var(--warning-bg)',
+                    'bg-hover': 'var(--warning-bg-hover)',
+                },
                 danger: {
                     DEFAULT: 'var(--danger)',
                     bg: 'var(--danger-bg)',

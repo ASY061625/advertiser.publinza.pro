@@ -22,7 +22,7 @@ final class RecoveryCodes
     public const COUNT = 8;
 
     /**
-     * @return list<string>  The plaintext codes. Show these once and discard.
+     * @return list<string> The plaintext codes. Show these once and discard.
      */
     public static function generate(User $user): array
     {

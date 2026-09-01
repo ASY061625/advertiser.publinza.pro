@@ -74,3 +74,33 @@ it('renders the advertiser surface into its own root template', function (): voi
         // The advertiser page never references the admin entry point.
         ->assertDontSee('resources/js/admin/main.tsx');
 });
+
+it('narrows the catalog to a text search without losing its joins or filters', function (): void {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    $wanted = catalogSite(50_000, 60, 200_00);
+    $wanted->forceFill(['domain' => 'quietledger.com', 'title' => 'Quiet Ledger'])->save();
+
+    $other = catalogSite(90_000, 70, 300_00);
+    $other->forceFill(['domain' => 'northsignal.co', 'title' => 'North Signal'])->save();
+
+    // Scout runs on the collection driver here, so this exercises the real
+    // search path — the one that used to call a method Scout does not have.
+    $this->actingAs($user)
+        ->get(advertiserUrl('/catalog?q=quietledger'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('sites.data', 1)
+            ->where('sites.data.0.domain', 'quietledger.com')
+        );
+});
+
+it('returns nothing rather than everything when a search matches no site', function (): void {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    catalogSite(50_000, 60, 200_00);
+
+    $this->actingAs($user)
+        ->get(advertiserUrl('/catalog?q=zzzznothingmatchesthis'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('sites.data', 0));
+});

@@ -18,9 +18,20 @@ final class SearchCatalog
     {
         // A text query goes through Meilisearch; everything else stays a plain
         // indexed query, which is cheaper and exactly consistent.
-        $query = $filters->query === null
-            ? Website::query()
-            : Website::search($filters->query)->take(1000)->getQuery();
+        //
+        // Scout's builder has no getQuery(): it is not an Eloquent builder and
+        // cannot be joined or filtered further. So the search runs first and
+        // hands back ids, and the ids constrain an ordinary Eloquent query —
+        // which is what the joins, scopes and ordering below all need.
+        $query = Website::query();
+
+        if ($filters->query !== null) {
+            $ids = Website::search($filters->query)->take(1000)->keys();
+
+            // An empty result set has to stay empty; whereIn on [] does that,
+            // where omitting the clause would return the whole catalog.
+            $query->whereIn('websites.id', $ids->all());
+        }
 
         $query->active()
             ->with(['category', 'primaryLanguage', 'country', 'latestMetric', 'prices'])

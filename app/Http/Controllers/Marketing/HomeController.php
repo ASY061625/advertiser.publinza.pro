@@ -7,10 +7,12 @@ namespace App\Http\Controllers\Marketing;
 use App\Domain\Catalog\Actions\GetCatalogPreview;
 use App\Domain\Catalog\Actions\GetCatalogRanges;
 use App\Domain\Catalog\Models\Website;
+use App\Domain\Catalog\Models\WebsiteCategory;
 use App\Domain\Catalog\Models\WebsiteMetric;
 use App\Http\Controllers\Controller;
 use App\Support\Seo;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
@@ -113,7 +115,7 @@ class HomeController extends Controller
     private function categories(): array
     {
         /** @var list<array{slug: string, name: string}> $categories */
-        $categories = Cache::remember('marketing:categories', now()->addHour(), fn (): array => \App\Domain\Catalog\Models\WebsiteCategory::query()
+        $categories = Cache::remember('marketing:categories', now()->addHour(), fn (): array => WebsiteCategory::query()
             ->whereHas('websites', fn ($q) => $q->where('is_active', true))
             ->orderBy('sort_order')
             ->take(8)
@@ -134,6 +136,6 @@ class HomeController extends Controller
 
         return $latest === null
             ? 'monthly'
-            : \Illuminate\Support\Carbon::parse($latest)->format('j F Y');
+            : Carbon::parse($latest)->format('j F Y');
     }
 }

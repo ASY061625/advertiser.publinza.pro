@@ -104,7 +104,14 @@ Route::middleware('auth')->group(function (): void {
  */
 Route::middleware(['auth', 'verified'])->group(function (): void {
 
-    Route::get('/', DashboardController::class)->name('dashboard');
+    // One canonical address for the landing screen. The app root redirects to
+    // it rather than rendering a second copy under a second route name, so
+    // route('dashboard') and the URL an advertiser bookmarks are the same page.
+    Route::redirect('/', '/dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    // One aggregated endpoint behind every widget, cached 5 minutes per
+    // user, range, granularity and project scope.
+    Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
 
     Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/catalog/{site}', [CatalogController::class, 'show'])->name('catalog.show');

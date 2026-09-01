@@ -37,20 +37,20 @@ it('emails a link only to a real account', function (): void {
 });
 
 it('sets the new password and rotates the remember token', function (): void {
-    $user = User::factory()->create(['email' => 'dana@northwind.test', 'password' => 'old-password-1']);
+    $user = User::factory()->create(['email' => 'dana@northwind.test', 'password' => 'Old-Password-1']);
     $before = $user->remember_token;
     $token = Password::broker()->createToken($user);
 
     $this->post(advertiserUrl('/reset-password'), [
         'token' => $token,
         'email' => 'dana@northwind.test',
-        'password' => 'brand-new-horse-9',
-        'password_confirmation' => 'brand-new-horse-9',
+        'password' => 'Brand-New-Horse-9',
+        'password_confirmation' => 'Brand-New-Horse-9',
     ])->assertRedirect(advertiserUrl('/login'));
 
     $user->refresh();
 
-    expect(Hash::check('brand-new-horse-9', $user->password))->toBeTrue()
+    expect(Hash::check('Brand-New-Horse-9', $user->password))->toBeTrue()
         // Every "remember me" cookie already issued stops working.
         ->and($user->remember_token)->not->toBe($before);
 });
@@ -68,8 +68,8 @@ it('drops every trusted device on reset', function (): void {
     $this->post(advertiserUrl('/reset-password'), [
         'token' => $token,
         'email' => 'dana@northwind.test',
-        'password' => 'brand-new-horse-9',
-        'password_confirmation' => 'brand-new-horse-9',
+        'password' => 'Brand-New-Horse-9',
+        'password_confirmation' => 'Brand-New-Horse-9',
     ]);
 
     // Whoever forced the reset may be sitting on a browser that was trusted.
@@ -83,16 +83,16 @@ it('will not let a reset token be used twice', function (): void {
     $payload = [
         'token' => $token,
         'email' => 'dana@northwind.test',
-        'password' => 'brand-new-horse-9',
-        'password_confirmation' => 'brand-new-horse-9',
+        'password' => 'Brand-New-Horse-9',
+        'password_confirmation' => 'Brand-New-Horse-9',
     ];
 
     $this->post(advertiserUrl('/reset-password'), $payload)->assertRedirect(advertiserUrl('/login'));
 
-    $this->post(advertiserUrl('/reset-password'), [...$payload, 'password' => 'second-attempt-9', 'password_confirmation' => 'second-attempt-9'])
+    $this->post(advertiserUrl('/reset-password'), [...$payload, 'password' => 'Second-Attempt-9', 'password_confirmation' => 'Second-Attempt-9'])
         ->assertSessionHasErrors('email');
 
-    expect(Hash::check('brand-new-horse-9', $user->fresh()->password))->toBeTrue();
+    expect(Hash::check('Brand-New-Horse-9', $user->fresh()->password))->toBeTrue();
 });
 
 it('rejects a token past its 60-minute life', function (): void {
@@ -104,7 +104,7 @@ it('rejects a token past its 60-minute life', function (): void {
     $this->post(advertiserUrl('/reset-password'), [
         'token' => $token,
         'email' => 'dana@northwind.test',
-        'password' => 'brand-new-horse-9',
-        'password_confirmation' => 'brand-new-horse-9',
+        'password' => 'Brand-New-Horse-9',
+        'password_confirmation' => 'Brand-New-Horse-9',
     ])->assertSessionHasErrors('email');
 });

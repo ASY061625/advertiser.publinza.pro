@@ -50,7 +50,7 @@ make dev     # containers + Vite with HMR
 Seeded accounts (local only, password `password`):
 
 - Advertiser — `advertiser@publinza.test`
-- Admin — `admin@publinza.test`, TOTP secret `ABCDEFGHIJKLMNOP`
+- Admin — `owner@publinza.test`, TOTP secret `ABCDEFGHIJKLMNOP`
 
 ### Make targets
 
@@ -155,7 +155,7 @@ product — every account buys placements, and the sites being bought are ours.
 | `/reset-password/{token}` | Single use, 60-minute life |
 | `/verify-email` | Where an unverified account lands; resend limited to once a minute |
 | `/two-factor-challenge` | Second step; not signed in until it passes |
-| `POST /logout` | Also drops this browser's trusted-device token |
+| `POST /logout` | Ends the session; the trusted-device token survives, see below |
 | `/settings/two-factor` | Turn 2FA on or off, and regenerate recovery codes |
 
 **Throttling.** `LoginThrottle` allows five attempts per email *and* IP per minute, then locks
@@ -165,6 +165,17 @@ credential-stuffing run across addresses.
 
 **Hashing.** Argon2id at 64MiB / 4 passes / 2 threads (`config/hashing.php`). Tests drop the
 cost — the algorithm under test is unchanged.
+
+**Password strength** is defined once, in `AppServiceProvider` via `Password::defaults()`, so
+signup and reset cannot drift apart: ten characters, mixed case, a digit, and a check against
+Have I Been Pwned's breach corpus. The breach check is skipped under test — it is a live HTTP
+call, and what the tests are pinning is the length and composition rule, not an external
+service's uptime.
+
+**Trusted devices survive sign-out.** "Trust this device for 30 days" has to mean 30 days; a
+trust voided at the next sign-out would re-challenge on the very next visit and be worth
+nothing. Trust is dropped where dropping it is actually meant — a password reset clears every
+device, and turning 2FA off clears them too.
 
 **Sessions.** Regenerated on sign-in. Cookies are httpOnly, SameSite=Lax, Secure wherever
 HTTPS is served, and encrypted. `AuthenticateSession` ties each session to the password hash
@@ -229,6 +240,72 @@ real broadcast event, but running Reverb needs two Composer packages this reposi
 file does not have — `laravel/reverb` and a Pusher-protocol client. Add them, set
 `BROADCAST_CONNECTION=reverb` and the `REVERB_*` keys, and the shell switches over on its own.
 Until then the poll carries it.
+
+---
+
+## Dashboard
+
+`/dashboard` is the advertiser's landing screen. `/` redirects to it, so there is one
+canonical address rather than the same page under two route names.
+
+Everything on the page obeys one date range. Changing the range refetches
+`GET /dashboard/metrics` — a single aggregated endpoint behind every widget, cached five
+minutes per user, range, granularity and project scope. Six endpoints would let the stat
+cards and the chart disagree about which window they are describing.
+
+The first payload is inlined into the page, so the dashboard arrives populated rather than
+as skeletons that resolve a beat later. Skeletons exist per panel and are only ever shown
+for a range change.
+
+### Honest numbers
+
+- **"Previous equivalent period" is the same number of days again**, not the previous
+  calendar month. Comparing a 31-day month against a 28-day one would show February as a
+  collapse every year. See `DateRange::previous()`.
+- **A delta against zero is "New", not "up 100%".** `deltaPct` is null when the previous
+  period was empty, and the chip says so. Exactly zero reads neutral ink, not green.
+- **Point-in-time figures are reconstructed, not estimated.** The balance a month ago comes
+  off the ledger row that recorded it (`balance_after_cents`); "posts in progress a month
+  ago" is rebuilt from `post_status_history` rather than read from today's `status` column.
+
+### The chart is deliberately not dual-axis
+
+The brief asked for placements and spend on one plot with two y-axes. Two independent
+scales mean the point where the bars and the line appear to cross is decided by the axis
+ranges, not by the data — the chart invents a correlation. It is built instead as two plots
+sharing one x-axis, one crosshair and one tooltip, which answers the same question without
+manufacturing that crossing.
+
+Brand blue and teal were validated as a pair: ΔE 28.7 under deuteranopia, 31.8 for normal
+vision. Teal falls below 3:1 against white, so the spend plot carries visible axis labels, a
+direct peak label and a `<details>` table view rather than relying on the line's colour.
+
+### Posts by status does not ask colour to carry identity
+
+The segment hues are the product's fixed status colours, chosen for badges read in
+isolation. As a categorical palette they fail: `new` and `content_review` separate by ΔE 2.0
+under deuteranopia, and `draft` and `frozen` are two greys. Those colours are not negotiable
+— a "Posted" chip is the same chip everywhere — so the bar carries the proportion only.
+Identity lives in the legend, where every row spells out its status, count and share;
+segments are separated by a surface gap; and hovering or focusing a legend row isolates its
+segment, mapping row to bar without reference to colour at all.
+
+Rows are named by their own status rather than by their badge: `Completed` and `Posted`
+share a colour, so a chip left to its default text would print "Posted" twice with two
+different counts beside it.
+
+### Three empty states, three different messages
+
+| Situation | What the page shows |
+| --- | --- |
+| No projects at all | The whole body is replaced by one instruction: create a project. |
+| Projects, nothing ever ordered | Row 1 stays, reading zeros; rows 2–4 become one prompt to browse the catalog. |
+| History, but none in this range | A quieter dashed panel: "No activity in this range", with a reset to the last 30 days. |
+
+A brand-new account, an account that has bought nothing, and an account with plenty of
+history that picked a quiet fortnight are not the same situation. One generic "nothing here"
+would tell the first person nothing about what to do next and make the third think their
+data had been lost.
 
 ---
 
@@ -390,6 +467,29 @@ match the route group it is aimed at.
 
 CI runs the same checks and additionally asserts that no admin chunk is reachable from the
 advertiser build.
+
+### Two tests skip without MySQL
+
+`tests/Feature/Billing/WalletConcurrencyTest.php` proves that concurrent freezes cannot
+overdraw a wallet. SQLite ignores `SELECT ... FOR UPDATE`, so a pass there would prove
+nothing and the tests skip loudly. Run them with `DB_CONNECTION=mysql`.
+
+### PHPStan is not yet clean at level 6
+
+`make stan` currently reports around 200 findings. None is a defect — the ones that were have
+been fixed — but the gate does not pass, so it is worth knowing what is in there before you
+run it:
+
+| Roughly | What | Why |
+| --- | --- | --- |
+| 140 | `Undefined variable: $this` in `tests/` | Pest rebinds `$this` inside test closures at runtime. Needs the Pest PHPStan plugin, which is not in the lock file. |
+| 28 | `uses generic trait HasFactory but does not specify its types` | Model-level generic annotations, never written. |
+| 12 | `Cannot call method ... on string` on model attributes | Datetime columns that *are* cast, but have no `@property` docblock for PHPStan to read (`checkModelProperties` is off). |
+| ~20 | Array-shape and collection template annotations | Ordinary level-6 annotation debt. |
+
+Closing it is annotation work across the whole codebase rather than a bug hunt. Do not add a
+baseline to make the number go away — it would hide the next real finding, which is exactly
+how the ones fixed here survived so long.
 
 ---
 

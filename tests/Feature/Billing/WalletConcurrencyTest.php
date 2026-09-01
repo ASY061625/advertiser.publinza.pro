@@ -95,7 +95,7 @@ it('keeps the ledger consistent when deposits and freezes interleave', function 
     // Six racers for a balance covering two, while nothing tops it up.
     for ($i = 0; $i < 6; $i++) {
         $process = new Process(
-            ['php', 'artisan', 'wallet:try-freeze', (string) $wallet->id, '100' . '00'],
+            ['php', 'artisan', 'wallet:try-freeze', (string) $wallet->id, '100'.'00'],
             base_path(),
             ['APP_ENV' => 'testing'],
         );

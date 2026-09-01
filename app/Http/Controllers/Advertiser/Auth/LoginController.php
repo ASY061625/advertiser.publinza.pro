@@ -84,20 +84,18 @@ class LoginController extends Controller
         return redirect()->intended($completeLogin->handle($user, $request->boolean('remember')));
     }
 
-    public function destroy(Request $request, TrustedDevices $devices): RedirectResponse
+    public function destroy(Request $request): RedirectResponse
     {
-        $user = $request->user();
-
-        // Signing out drops this browser's trust too. Someone who signs out on
-        // a shared machine means it.
-        $forget = $user === null ? null : $devices->forgetCurrent($user);
-
+        // The trusted-device cookie deliberately survives a sign-out. "Trust
+        // this device for 30 days" has to mean 30 days; a trust that expired at
+        // the next sign-out would re-challenge on the very next visit and the
+        // option would be worth nothing. Trust is revoked where revocation is
+        // actually meant: a password reset (which drops every device) or the
+        // advertiser removing the device from their security settings.
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        $response = redirect()->route('login');
-
-        return $forget === null ? $response : $response->withCookie($forget);
+        return redirect()->route('login');
     }
 }

@@ -15,7 +15,11 @@ class ContactRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email:rfc,dns', 'max:190'],
+            // RFC syntax only. The `dns` rule performs a live MX lookup inside the
+            // request, which puts a network round trip on the critical path and
+            // rejects a valid address whenever its DNS is briefly unreachable.
+            // Whether an address receives mail is settled by sending to it.
+            'email' => ['required', 'email:rfc', 'max:190'],
             'company' => ['nullable', 'string', 'max:190'],
             'message' => ['required', 'string', 'min:20', 'max:5000'],
             'website' => ['nullable', 'string', 'max:190'],

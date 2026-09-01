@@ -109,6 +109,18 @@ class Website extends Model
 
     // ----------------------------------------------------------- searchable
 
+    /**
+     * Eager-loads what toSearchableArray needs when Scout indexes in bulk, so
+     * a full reindex is a handful of queries rather than three per site.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    protected function makeAllSearchableUsing($query)
+    {
+        return $query->with(['latestMetric', 'prices']);
+    }
+
     /** Only approved, active sites belong in the advertiser-facing index. */
     public function shouldBeSearchable(): bool
     {
@@ -120,6 +132,12 @@ class Website extends Model
      */
     public function toSearchableArray(): array
     {
+        // Load rather than assume. Scout calls this on models it fetched
+        // itself — during indexing, and on every search under the collection
+        // driver — so the relations are not eager-loaded unless we say so.
+        // loadMissing is a no-op when they already are.
+        $this->loadMissing(['latestMetric', 'prices']);
+
         $metric = $this->latestMetric;
         $price = $this->prices->first();
 

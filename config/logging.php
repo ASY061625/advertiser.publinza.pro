@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
 
@@ -48,7 +49,7 @@ return [
             'days' => 365,
         ],
 
-        'null' => ['driver' => 'monolog', 'handler' => Monolog\Handler\NullHandler::class],
+        'null' => ['driver' => 'monolog', 'handler' => NullHandler::class],
         'emergency' => ['path' => storage_path('logs/laravel.log')],
     ],
 ];

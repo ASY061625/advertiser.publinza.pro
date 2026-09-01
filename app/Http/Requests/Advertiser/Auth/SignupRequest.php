@@ -16,7 +16,11 @@ class SignupRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'min:2', 'max:120'],
-            'email' => ['required', 'string', 'email:rfc,dns', 'max:190', 'unique:users,email'],
+            // RFC syntax only. The `dns` rule performs a live MX lookup inside the
+            // request, which puts a network round trip on the critical path and
+            // rejects a valid address whenever its DNS is briefly unreachable.
+            // Whether an address receives mail is settled by sending to it.
+            'email' => ['required', 'string', 'email:rfc', 'max:190', 'unique:users,email'],
             'password' => [
                 'required',
                 'string',
@@ -24,7 +28,7 @@ class SignupRequest extends FormRequest
                 // Ten characters minimum, mixed case and a digit, and checked
                 // against Have I Been Pwned's breach corpus. Length does more
                 // for strength than symbol rules, so there is no symbol rule.
-                Password::min(10)->mixedCase()->numbers()->uncompromised(),
+                Password::defaults(),
             ],
             'company' => ['nullable', 'string', 'max:190'],
             'country' => ['nullable', 'string', 'size:2', 'exists:countries,code'],

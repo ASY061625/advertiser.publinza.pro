@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domain\Catalog\Models\Site;
+use App\Domain\Catalog\Models\Website;
 
 return [
     'driver' => env('SCOUT_DRIVER', 'meilisearch'),
@@ -18,18 +18,23 @@ return [
         'key' => env('MEILISEARCH_KEY'),
 
         'index-settings' => [
-            Site::class => [
+            // These names must match the keys Website::toSearchableArray()
+            // emits. Meilisearch will not filter or sort on an attribute it was
+            // never told about, and it fails quietly — so a mismatch here shows
+            // up as a filter that simply does nothing.
+            Website::class => [
                 'filterableAttributes' => [
-                    'category',
-                    'language',
-                    'price_minor_units',
-                    'traffic',
-                    'domain_rating',
-                    'domain_authority',
+                    'category_id',
+                    'primary_language_id',
+                    'country_id',
+                    'price_cents',
+                    'monthly_traffic',
+                    'ahrefs_dr',
+                    'moz_da',
                     'spam_score',
                 ],
-                'sortableAttributes' => ['price_minor_units', 'traffic', 'domain_rating'],
-                'searchableAttributes' => ['domain', 'category'],
+                'sortableAttributes' => ['price_cents', 'monthly_traffic', 'ahrefs_dr'],
+                'searchableAttributes' => ['domain', 'title', 'description'],
             ],
         ],
     ],

@@ -1,6 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Drawer } from '@shared/ui';
+import { Drawer, ToastProvider } from '@shared/ui';
 import type { AdvertiserSharedProps } from '@shared/types';
 import type { Shell } from '@shared/types/shell';
 import { CommandPalette } from '../Components/shell/CommandPalette';
@@ -104,61 +104,68 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
     const changelogCount = changelogRead ? 0 : counts.changelog;
 
     return (
-        <div className="min-h-screen bg-canvas">
-            <a
-                href="#main-content"
-                className="sr-only-focusable absolute left-4 top-4 z-50 rounded-button bg-brand px-4 py-2 font-sora text-base font-medium text-white"
-            >
-                Skip to content
-            </a>
+        <ToastProvider>
+            <div className="min-h-screen bg-canvas">
+                <a
+                    href="#main-content"
+                    className="sr-only-focusable absolute left-4 top-4 z-50 rounded-button bg-brand px-4 py-2 font-sora text-base font-medium text-white"
+                >
+                    Skip to content
+                </a>
 
-            <div className="fixed inset-y-0 left-0 z-40 hidden lg:block">
-                <Sidebar
-                    collapsed={collapsed}
-                    onToggle={toggleSidebar}
-                    currentUrl={page.url}
-                    projects={shell.projects}
-                    activeProjectId={activeProjectId}
-                    version={shell.version}
-                />
-            </div>
+                <div className="fixed inset-y-0 left-0 z-40 hidden lg:block">
+                    <Sidebar
+                        collapsed={collapsed}
+                        onToggle={toggleSidebar}
+                        currentUrl={page.url}
+                        projects={shell.projects}
+                        activeProjectId={activeProjectId}
+                        version={shell.version}
+                    />
+                </div>
 
-            <div className={collapsed ? 'lg:pl-sidebar-collapsed' : 'lg:pl-sidebar'}>
-                <Header
-                    crumbs={crumbs ?? [{ label: title }]}
-                    shell={shell}
-                    counts={{ ...counts, changelog: changelogCount }}
-                    user={user!}
-                    onOpenWhatsNew={() => setWhatsNewOpen(true)}
-                    onOpenMobileNav={() => setMobileNavOpen(true)}
-                />
+                <div className={collapsed ? 'lg:pl-sidebar-collapsed' : 'lg:pl-sidebar'}>
+                    <Header
+                        crumbs={crumbs ?? [{ label: title }]}
+                        shell={shell}
+                        counts={{ ...counts, changelog: changelogCount }}
+                        user={user!}
+                        onOpenWhatsNew={() => setWhatsNewOpen(true)}
+                        onOpenMobileNav={() => setMobileNavOpen(true)}
+                    />
 
-                <main id="main-content" className="mx-auto max-w-content px-4 py-6 lg:px-6">
-                    {children}
-                </main>
-            </div>
+                    <main id="main-content" className="mx-auto max-w-content px-4 py-6 lg:px-6">
+                        {children}
+                    </main>
+                </div>
 
-            {/* Below lg the sidebar is an off-canvas drawer. Drawer already traps
+                {/* Below lg the sidebar is an off-canvas drawer. Drawer already traps
                 focus, locks body scroll and answers Escape. */}
-            <Drawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} title="Menu" className="max-w-sidebar">
-                <Sidebar
-                    mobile
-                    collapsed={false}
-                    onToggle={() => undefined}
-                    currentUrl={page.url}
-                    projects={shell.projects}
-                    activeProjectId={activeProjectId}
-                    version={shell.version}
+                <Drawer
+                    open={mobileNavOpen}
+                    onClose={() => setMobileNavOpen(false)}
+                    title="Menu"
+                    className="max-w-sidebar"
+                >
+                    <Sidebar
+                        mobile
+                        collapsed={false}
+                        onToggle={() => undefined}
+                        currentUrl={page.url}
+                        projects={shell.projects}
+                        activeProjectId={activeProjectId}
+                        version={shell.version}
+                    />
+                </Drawer>
+
+                <WhatsNewDrawer
+                    open={whatsNewOpen}
+                    onClose={() => setWhatsNewOpen(false)}
+                    onRead={() => setChangelogRead(true)}
                 />
-            </Drawer>
 
-            <WhatsNewDrawer
-                open={whatsNewOpen}
-                onClose={() => setWhatsNewOpen(false)}
-                onRead={() => setChangelogRead(true)}
-            />
-
-            <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-        </div>
+                <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+            </div>
+        </ToastProvider>
     );
 }
