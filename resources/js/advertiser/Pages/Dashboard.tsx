@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { AppLayout } from '../Layouts/AppLayout';
+import { AppShell } from '../Layouts/AppShell';
 import { money, number } from '@shared/lib/format';
 
 interface DashboardProps {
@@ -20,7 +20,7 @@ export default function Dashboard({ stats }: DashboardProps) {
     ];
 
     return (
-        <AppLayout title="Dashboard">
+        <AppShell title="Dashboard">
             <Head title="Dashboard" />
 
             <div className="grid grid-cols-12 gap-6">
@@ -31,6 +31,6 @@ export default function Dashboard({ stats }: DashboardProps) {
                     </div>
                 ))}
             </div>
-        </AppLayout>
+        </AppShell>
     );
 }

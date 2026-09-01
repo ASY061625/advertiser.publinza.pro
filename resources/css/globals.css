@@ -140,6 +140,12 @@
 }
 
 @layer components {
+    /* A plain card surface, for the places that need one as a utility on a grid
+       child rather than as the <Card> component. */
+    .card {
+        @apply rounded-card border border-subtle bg-card shadow-card;
+    }
+
     /* Long-form article body.
 
        Blog HTML is authored by our editors and carries no classes, so it is

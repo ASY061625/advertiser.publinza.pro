@@ -51,4 +51,6 @@ export { Table, type Column, type SortDirection, type SortState, type TableProps
 export { DataGridToolbar, type DataGridToolbarProps } from './DataGridToolbar';
 export { Pagination, type PaginationProps } from './Pagination';
 
+export { useDismiss, useFocusTrap } from './usePopover';
+
 export * from './icons';

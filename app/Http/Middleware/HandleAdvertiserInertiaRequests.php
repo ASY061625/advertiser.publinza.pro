@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Domain\Billing\Actions\GetWalletBalance;
+use App\Support\ShellData;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -12,7 +13,10 @@ class HandleAdvertiserInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
 
-    public function __construct(private readonly GetWalletBalance $getWalletBalance) {}
+    public function __construct(
+        private readonly GetWalletBalance $getWalletBalance,
+        private readonly ShellData $shellData,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -35,6 +39,9 @@ class HandleAdvertiserInertiaRequests extends Middleware
             'balanceCents' => fn (): int => $user === null
                 ? 0
                 : $this->getWalletBalance->handle($user)->cents,
+            // Everything the persistent shell renders. A closure, so an
+            // Inertia partial reload that does not ask for it pays nothing.
+            'shell' => fn (): ?array => $user === null ? null : $this->shellData->forUser($user),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

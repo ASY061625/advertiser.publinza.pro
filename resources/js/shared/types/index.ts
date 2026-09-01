@@ -2,6 +2,8 @@
 // its colours cannot drift apart.
 export type { StatusKey } from '@shared/ui';
 
+import type { Shell } from './shell';
+
 export interface User {
     id: number;
     name: string;
@@ -30,6 +32,8 @@ export interface SharedProps {
 export interface AdvertiserSharedProps extends SharedProps {
     auth: { user: User | null };
     balanceCents: number;
+    /** Null before sign-in; every authenticated page has it. */
+    shell: Shell | null;
 }
 
 export interface AdminSharedProps extends SharedProps {

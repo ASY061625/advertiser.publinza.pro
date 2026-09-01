@@ -15,6 +15,8 @@ use App\Http\Controllers\Advertiser\DashboardController;
 use App\Http\Controllers\Advertiser\MessageController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\ProjectController;
+use App\Http\Controllers\Advertiser\SearchController;
+use App\Http\Controllers\Advertiser\ShellController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -77,6 +79,16 @@ Route::middleware('auth')->group(function (): void {
         ->name('verification.verify');
     Route::post('/verify-email/resend', [EmailVerificationController::class, 'resend'])
         ->name('verification.resend');
+
+    /*
+     * The app shell's own endpoints. Available to any signed-in advertiser,
+     * verified or not, because the shell frames the verification notice too.
+     */
+    Route::patch('/shell/sidebar', [ShellController::class, 'sidebar'])->name('shell.sidebar');
+    Route::get('/shell/counts', [ShellController::class, 'counts'])->name('shell.counts');
+    Route::get('/shell/changelog', [ShellController::class, 'changelog'])->name('shell.changelog');
+    Route::get('/whats-new', [ShellController::class, 'whatsNew'])->name('whats-new');
+    Route::get('/search', SearchController::class)->middleware('throttle:60,1')->name('search');
 
     Route::get('/settings/two-factor', [TwoFactorSettingsController::class, 'show'])->name('two-factor.show');
     Route::post('/settings/two-factor', [TwoFactorSettingsController::class, 'enable'])->name('two-factor.enable');

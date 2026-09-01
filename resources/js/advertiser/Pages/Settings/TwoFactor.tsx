@@ -1,7 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { Alert, Button, Card, Input } from '@shared/ui';
-import { AppLayout } from '../../Layouts/AppLayout';
+import { AppShell } from '../../Layouts/AppShell';
 
 interface TwoFactorProps {
     enabled: boolean;
@@ -36,7 +36,10 @@ export default function TwoFactor({ enabled, pending, secret, provisioningUri, r
     }
 
     return (
-        <AppLayout title="Two-factor authentication">
+        <AppShell
+            title="Two-factor authentication"
+            crumbs={[{ label: 'Settings', href: '/settings/account' }, { label: 'Two-factor authentication' }]}
+        >
             <Head title="Two-factor authentication" />
 
             <div className="flex max-w-2xl flex-col gap-6">
@@ -156,6 +159,6 @@ export default function TwoFactor({ enabled, pending, secret, provisioningUri, r
                     </>
                 )}
             </div>
-        </AppLayout>
+        </AppShell>
     );
 }

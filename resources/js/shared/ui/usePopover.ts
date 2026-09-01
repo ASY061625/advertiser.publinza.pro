@@ -1,4 +1,13 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useId, useRef, type RefObject } from 'react';
+
+/**
+ * Every open overlay, oldest first.
+ *
+ * Escape must close the topmost overlay only. Without a shared stack, each
+ * overlay listens independently and one Escape collapses the whole pile — so a
+ * modal opened from inside a drawer takes the drawer down with it.
+ */
+const overlayStack: string[] = [];
 
 /**
  * Closes a popover on Escape or on a pointer press outside it.
@@ -9,16 +18,20 @@ import { useEffect, useRef, type RefObject } from 'react';
  */
 export function useDismiss<T extends HTMLElement>(open: boolean, onClose: () => void): RefObject<T> {
     const ref = useRef<T>(null);
+    const id = useId();
 
     useEffect(() => {
         if (!open) return;
+
+        overlayStack.push(id);
 
         function onPointerDown(event: PointerEvent) {
             if (ref.current && !ref.current.contains(event.target as Node)) onClose();
         }
 
         function onKeyDown(event: KeyboardEvent) {
-            if (event.key === 'Escape') {
+            // Only the topmost overlay answers Escape.
+            if (event.key === 'Escape' && overlayStack[overlayStack.length - 1] === id) {
                 event.stopPropagation();
                 onClose();
             }
@@ -30,8 +43,11 @@ export function useDismiss<T extends HTMLElement>(open: boolean, onClose: () => 
         return () => {
             document.removeEventListener('pointerdown', onPointerDown);
             document.removeEventListener('keydown', onKeyDown);
+
+            const index = overlayStack.lastIndexOf(id);
+            if (index !== -1) overlayStack.splice(index, 1);
         };
-    }, [open, onClose]);
+    }, [open, onClose, id]);
 
     return ref;
 }

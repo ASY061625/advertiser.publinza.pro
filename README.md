@@ -194,6 +194,44 @@ in fours. Adding `bacon/bacon-qr-code` would let `google2fa-qrcode` draw a real 
 
 ---
 
+## App shell
+
+Every authenticated route renders inside `resources/js/advertiser/Layouts/AppShell.tsx`.
+
+**Sidebar** — 248px expanded, 68px collapsed, measured in a browser rather than assumed. The
+collapsed state is read from `localStorage` first so it paints correctly on the first frame,
+then persisted to `users.sidebar_collapsed` so it follows the advertiser to a new browser. The
+collapse toggle sits on the sidebar's bottom edge. Collapsed labels become tooltips reachable
+by hover and by focus.
+
+**Project scope** — the switcher writes `?project={id}` into the URL, and the Catalog and Posts
+nav links carry it, so the buying context follows the advertiser instead of being re-picked on
+every screen. Project dots are derived from the project id against a fixed palette, so a
+project keeps its colour across sessions without a column to store it.
+
+**Header** — 60px, sticky. What's new (drawer), Favorites (a link, not a menu), Conversations,
+Cart, Balance, Profile. Below 1024px the first four collapse into one overflow menu; balance
+and profile stay.
+
+**Counts** — `useShellCounts` listens on a private Echo channel and falls back to a 60-second
+poll. The poll is a working mode, not a degraded one: with `BROADCAST_CONNECTION=null`
+(the default) it is the whole mechanism. Events carry no numbers, only which scopes moved, so
+two tabs cannot disagree because events arrived out of order. Echo and Pusher are dynamically
+imported, so an installation without a broadcaster never downloads them.
+
+**Overlays** — `useDismiss` keeps a shared stack so Escape closes only the topmost overlay. A
+modal opened from inside a drawer no longer takes the drawer down with it.
+
+### Reverb is not wired yet
+
+`config/broadcasting.php` and `routes/channels.php` are in place and `ShellCountsChanged` is a
+real broadcast event, but running Reverb needs two Composer packages this repository's lock
+file does not have — `laravel/reverb` and a Pusher-protocol client. Add them, set
+`BROADCAST_CONNECTION=reverb` and the `REVERB_*` keys, and the shell switches over on its own.
+Until then the poll carries it.
+
+---
+
 ## Layout
 
 ```

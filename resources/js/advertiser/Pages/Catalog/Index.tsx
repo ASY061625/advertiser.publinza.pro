@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { AppLayout } from '../../Layouts/AppLayout';
+import { AppShell } from '../../Layouts/AppShell';
 import {
     Button,
     DataGridToolbar,
@@ -87,7 +87,7 @@ export default function CatalogIndex({ sites, ranges, filters }: CatalogIndexPro
     ];
 
     return (
-        <AppLayout title="Catalog">
+        <AppShell title="Catalog" crumbs={[{ label: 'Catalog of websites' }]}>
             <Head title="Catalog" />
 
             <div className="flex flex-col gap-4">
@@ -131,6 +131,6 @@ export default function CatalogIndex({ sites, ranges, filters }: CatalogIndexPro
                     onPageChange={(page) => router.get('/catalog', { page }, { preserveState: true })}
                 />
             </div>
-        </AppLayout>
+        </AppShell>
     );
 }

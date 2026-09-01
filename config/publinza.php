@@ -46,6 +46,9 @@ return [
 
     'force_https' => (bool) env('FORCE_HTTPS', false),
 
+    // Shown at the foot of the app sidebar. Set from the release tag on deploy.
+    'version' => env('APP_VERSION', 'dev'),
+
     /*
     |--------------------------------------------------------------------------
     | Catalog
