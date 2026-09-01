@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Domain\Billing\Models\Order;
-use App\Domain\Catalog\Models\Site;
+use App\Domain\Trading\Enums\OrderStatus;
+use App\Domain\Trading\Models\Order;
+use App\Domain\Catalog\Models\Website;
 use App\Http\Controllers\Controller;
 use Inertia\Response;
 
@@ -15,8 +16,8 @@ class OverviewController extends Controller
     {
         return inertia('Dashboard', [
             'stats' => [
-                'pendingSites' => Site::query()->where('status', 'pending')->count(),
-                'openOrders' => Order::query()->whereNotIn('status', ['completed', 'cancelled'])->count(),
+                'pendingSites' => Website::query()->where('is_active', false)->count(),
+                'openOrders' => Order::query()->whereNotIn('status', [OrderStatus::Refunded, OrderStatus::Cancelled])->count(),
                 'payoutsDue' => 0,
             ],
         ]);

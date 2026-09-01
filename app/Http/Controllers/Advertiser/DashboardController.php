@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advertiser;
 
-use App\Domain\Posts\DTOs\PostStatus;
+use App\Domain\Posts\Enums\PostStatus;
 use App\Domain\Posts\Models\Post;
+use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Models\Project;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -21,18 +22,26 @@ class DashboardController extends Controller
             'stats' => [
                 'activeProjects' => Project::query()
                     ->where('user_id', $userId)
-                    ->whereNot('status', 'draft')
+                    ->where('status', ProjectStatus::Active)
                     ->count(),
                 'postsInProgress' => Post::query()
-                    ->whereHas('project', fn ($q) => $q->where('user_id', $userId))
-                    ->whereIn('status', [PostStatus::InProgress->value, PostStatus::ContentReview->value])
+                    ->where('user_id', $userId)
+                    ->whereIn('status', [
+                        PostStatus::New,
+                        PostStatus::InProgress,
+                        PostStatus::ContentReview,
+                    ])
                     ->count(),
                 'publishedThisMonth' => Post::query()
-                    ->whereHas('project', fn ($q) => $q->where('user_id', $userId))
-                    ->where('status', PostStatus::Published->value)
+                    ->where('user_id', $userId)
+                    ->whereIn('status', [PostStatus::Posted, PostStatus::Completed])
                     ->where('published_at', '>=', now()->startOfMonth())
                     ->count(),
-                'spendThisMonthMinorUnits' => 0,
+                'spendThisMonthCents' => (int) Post::query()
+                    ->where('user_id', $userId)
+                    ->where('status', PostStatus::Completed)
+                    ->where('updated_at', '>=', now()->startOfMonth())
+                    ->sum('price_cents'),
             ],
         ]);
     }

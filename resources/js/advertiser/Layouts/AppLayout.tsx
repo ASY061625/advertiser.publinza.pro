@@ -59,7 +59,7 @@ export function AppLayout({ title, children }: { title: string; children: ReactN
                     <h1 className="font-sora text-lg font-semibold text-ink-900">{title}</h1>
                     <div className="flex items-center gap-4">
                         <span className="tabular rounded-pill bg-gold-subtle px-3 py-1 text-sm text-[#B45309]">
-                            Balance {money(props.balanceMinorUnits)}
+                            Balance {money(props.balanceCents)}
                         </span>
                         <span className="text-sm text-ink-500">{props.auth.user?.name}</span>
                     </div>

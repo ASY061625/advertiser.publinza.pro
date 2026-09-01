@@ -12,16 +12,26 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table): void {
             $table->id();
-            $table->string('name', 120);
             $table->string('email', 190)->unique();
-            $table->string('company', 190)->nullable();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('name', 120);
+            $table->string('company', 190)->nullable();
+            $table->char('country', 2)->nullable();
+            $table->string('vat_no', 64)->nullable();
+            $table->string('phone', 32)->nullable();
+            $table->string('timezone', 64)->default('UTC');
+            $table->string('locale', 8)->default('en');
+            $table->timestamp('email_verified_at')->nullable();
+            $table->text('two_factor_secret')->nullable();
+            // Backed by App\Domain\Identity\Enums\UserStatus, not a DB enum.
+            $table->string('status', 32)->default('active')->index();
+            $table->string('referrer_source', 120)->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
-        Schema::create('password_reset_tokens', function (Blueprint $table): void {
+        Schema::create('password_resets', function (Blueprint $table): void {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
@@ -35,12 +45,26 @@ return new class extends Migration
             $table->longText('payload');
             $table->integer('last_activity')->index();
         });
+
+        Schema::create('login_attempts', function (Blueprint $table): void {
+            $table->id();
+            $table->string('email', 190)->index();
+            $table->string('guard', 16)->default('web');
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->boolean('successful')->default(false);
+            $table->timestamp('created_at')->useCurrent();
+
+            // Powers "too many attempts from this address" lookups.
+            $table->index(['ip_address', 'created_at']);
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('login_attempts');
         Schema::dropIfExists('sessions');
-        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('password_resets');
         Schema::dropIfExists('users');
     }
 };

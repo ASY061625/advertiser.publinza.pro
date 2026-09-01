@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Factories;
+
+use App\Domain\Catalog\Enums\LinkType;
+use App\Domain\Catalog\Models\Country;
+use App\Domain\Catalog\Models\Language;
+use App\Domain\Catalog\Models\Website;
+use App\Domain\Catalog\Models\WebsiteCategory;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
+
+/**
+ * @extends Factory<Website>
+ */
+class WebsiteFactory extends Factory
+{
+    protected $model = Website::class;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        $domain = fake()->unique()->domainName();
+
+        return [
+            'domain' => $domain,
+            'slug' => Str::slug($domain),
+            'title' => fake()->catchPhrase(),
+            'description' => fake()->sentence(14),
+            'category_id' => WebsiteCategory::factory(),
+            'primary_language_id' => Language::factory(),
+            'country_id' => Country::factory(),
+            'is_active' => true,
+            'is_featured' => fake()->boolean(12),
+            'accepts_sensitive_topics' => [],
+            'publication_period_hours' => fake()->randomElement([24, 48, 72, 120, 168]),
+            'link_type' => fake()->boolean(80) ? LinkType::Dofollow : LinkType::Nofollow,
+            'links_allowed' => fake()->numberBetween(1, 3),
+            'max_links' => fake()->numberBetween(1, 4),
+            'min_words' => fake()->randomElement([500, 700, 800, 1000, 1200]),
+            'sample_url' => "https://{$domain}/example-post",
+            'guidelines' => fake()->paragraph(),
+        ];
+    }
+
+    public function pending(): static
+    {
+        return $this->state(fn (): array => ['is_active' => false]);
+    }
+
+    public function featured(): static
+    {
+        return $this->state(fn (): array => ['is_featured' => true]);
+    }
+}

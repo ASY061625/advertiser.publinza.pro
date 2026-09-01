@@ -5,9 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Advertiser;
 
 use App\Domain\Billing\Actions\FreezeFundsForOrder;
-use App\Domain\Billing\DTOs\Money;
-use App\Domain\Billing\Models\Order;
-use App\Domain\Catalog\Models\Site;
+use App\Domain\Catalog\Models\Website;
+use App\Domain\Posts\Enums\PostStatus;
+use App\Domain\Posts\Models\Post;
+use App\Domain\Trading\Enums\OrderStatus;
+use App\Domain\Trading\Enums\PaidFrom;
+use App\Domain\Trading\Enums\ServiceType;
+use App\Domain\Trading\Models\Cart;
+use App\Domain\Trading\Models\CartItem;
+use App\Domain\Trading\Models\Order;
+use App\Exceptions\InsufficientFunds;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,54 +22,103 @@ use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
-    public function store(Request $request, Site $site): RedirectResponse
+    public function store(Request $request, Website $website): RedirectResponse
     {
-        $this->authorize('purchase', $site);
+        $this->authorize('purchase', $website);
 
-        $cart = $request->session()->get('cart', []);
-        $cart[$site->id] = true;
-        $request->session()->put('cart', $cart);
+        $data = $request->validate([
+            'service_type' => ['required', 'string'],
+            'content_mode' => ['required', 'string'],
+            'project_id' => ['nullable', 'integer'],
+            'folder_id' => ['nullable', 'integer'],
+            'anchor_text' => ['nullable', 'string', 'max:190'],
+            'target_url' => ['nullable', 'url', 'max:2048'],
+        ]);
+
+        $service = ServiceType::from($data['service_type']);
+        $price = $website->priceFor($service);
+
+        if ($price === null) {
+            return back()->with('error', 'This site does not offer that service.');
+        }
+
+        $cart = Cart::query()->firstOrCreate(['user_id' => $request->user()->id]);
+
+        CartItem::query()->create([
+            ...$data,
+            'cart_id' => $cart->id,
+            'website_id' => $website->id,
+            // Snapshotted so a later price change cannot alter the quote.
+            'unit_price_cents' => $price->price_cents,
+        ]);
 
         return back()->with('success', 'Added to cart');
     }
 
-    public function destroy(Request $request, int $item): RedirectResponse
+    public function destroy(Request $request, CartItem $item): RedirectResponse
     {
-        $cart = $request->session()->get('cart', []);
-        unset($cart[$item]);
-        $request->session()->put('cart', $cart);
+        abort_unless($item->cart->user_id === $request->user()->id, 403);
+
+        $item->delete();
 
         return back()->with('success', 'Removed from cart');
     }
 
     public function checkout(Request $request, FreezeFundsForOrder $freezeFunds): RedirectResponse
     {
-        /** @var array<int, bool> $cart */
-        $cart = $request->session()->get('cart', []);
+        $user = $request->user();
+        $cart = Cart::query()->with('items')->firstWhere('user_id', $user->id);
 
-        if ($cart === []) {
+        if ($cart === null || $cart->items->isEmpty()) {
             return back()->with('error', 'Your cart is empty. Add a site from the catalog first.');
         }
 
-        $user = $request->user();
-        $sites = Site::query()->findMany(array_keys($cart));
-        $total = (int) $sites->sum('price_minor_units');
+        try {
+            $order = DB::transaction(function () use ($user, $cart, $freezeFunds): Order {
+                $subtotal = (int) $cart->items->sum('unit_price_cents');
 
-        $order = DB::transaction(function () use ($user, $total, $freezeFunds): Order {
-            $order = Order::query()->create([
-                'user_id' => $user->id,
-                'total_minor_units' => $total,
-                'status' => 'new',
-                'currency' => 'USD',
-            ]);
+                $order = Order::query()->create([
+                    'user_id' => $user->id,
+                    'order_number' => Order::generateNumber(),
+                    'subtotal_cents' => $subtotal,
+                    'discount_cents' => 0,
+                    'total_cents' => $subtotal,
+                    'currency' => 'USD',
+                    'status' => OrderStatus::Paid,
+                    'paid_from' => PaidFrom::Wallet,
+                    'paid_at' => now(),
+                ]);
 
-            $freezeFunds->handle($user, new Money($total), $order->id);
+                // Throws InsufficientFunds under the wallet's row lock.
+                $freezeFunds->handle($user, $order);
 
-            return $order;
-        });
+                foreach ($cart->items as $item) {
+                    $post = Post::query()->create([
+                        'order_id' => $order->id,
+                        'user_id' => $user->id,
+                        'project_id' => $item->project_id,
+                        'folder_id' => $item->folder_id,
+                        'website_id' => $item->website_id,
+                        'status' => PostStatus::Draft,
+                        'anchor_text' => $item->anchor_text,
+                        'target_url' => $item->target_url,
+                        'content_mode' => $item->content_mode,
+                        'price_cents' => $item->unit_price_cents,
+                        'deadline_at' => now()->addHours($item->website->publication_period_hours),
+                    ]);
 
-        $request->session()->forget('cart');
+                    // Paying moves it out of draft immediately.
+                    $post->transitionTo(PostStatus::New, "Order {$order->order_number}");
+                }
 
-        return to_route('posts.index')->with('success', "Order #{$order->id} placed");
+                $cart->items()->delete();
+
+                return $order;
+            });
+        } catch (InsufficientFunds $exception) {
+            return back()->with('error', $exception->getMessage().' Top up your balance to continue.');
+        }
+
+        return to_route('posts.index')->with('success', "Order {$order->order_number} placed");
     }
 }

@@ -21,12 +21,12 @@ class BillingController extends Controller
 
         return inertia('Billing/Index', [
             'wallet' => [
-                'balanceMinorUnits' => $wallet?->balance_minor_units ?? 0,
-                'frozenMinorUnits' => $wallet?->frozen_minor_units ?? 0,
+                'availableCents' => $wallet?->available_cents ?? 0,
+                'frozenCents' => $wallet?->frozen_cents ?? 0,
             ],
             'transactions' => $wallet === null
                 ? []
-                : Transaction::query()->where('wallet_id', $wallet->id)->latest()->paginate(25),
+                : Transaction::query()->where('wallet_id', $wallet->id)->latest('created_at')->paginate(25),
         ]);
     }
 

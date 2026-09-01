@@ -29,7 +29,7 @@ export interface SharedProps {
 
 export interface AdvertiserSharedProps extends SharedProps {
     auth: { user: User | null };
-    balanceMinorUnits: number;
+    balanceCents: number;
 }
 
 export interface AdminSharedProps extends SharedProps {

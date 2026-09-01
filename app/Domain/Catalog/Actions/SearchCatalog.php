@@ -5,43 +5,69 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Actions;
 
 use App\Domain\Catalog\DTOs\CatalogFilters;
-use App\Domain\Catalog\Models\Site;
+use App\Domain\Catalog\Models\Website;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
 final class SearchCatalog
 {
     /**
-     * @return LengthAwarePaginator<Site>
+     * @return LengthAwarePaginator<Website>
      */
-    public function handle(CatalogFilters $filters, int $perPage = 50): LengthAwarePaginator
+    public function handle(CatalogFilters $filters, ?int $userId = null, int $perPage = 50): LengthAwarePaginator
     {
-        // A text query goes through Meilisearch; everything else is a plain
-        // indexed query, which stays cheaper and exactly consistent.
+        // A text query goes through Meilisearch; everything else stays a plain
+        // indexed query, which is cheaper and exactly consistent.
         $query = $filters->query === null
-            ? Site::query()->where('status', 'approved')
-            : Site::search($filters->query)->query(fn (Builder $builder) => $builder->where('status', 'approved'))
-                ->take(1000)
-                ->getQuery();
+            ? Website::query()
+            : Website::search($filters->query)->take(1000)->getQuery();
+
+        $query->active()
+            ->with(['category', 'primaryLanguage', 'country', 'latestMetric', 'prices'])
+            ->joinSub(LatestWebsiteMetrics::query(), 'metrics', 'metrics.website_id', '=', 'websites.id')
+            ->leftJoin('website_prices', function ($join): void {
+                $join->on('website_prices.website_id', '=', 'websites.id')
+                    ->where('website_prices.service_type', '=', 'article_placement');
+            })
+            ->select('websites.*');
+
+        if ($userId !== null) {
+            $query->notBlacklistedBy($userId);
+        }
 
         return $this->constrain($query, $filters)
-            ->orderBy($filters->sort, $filters->direction)
+            ->orderBy($this->sortColumn($filters->sort), $filters->direction)
             ->paginate($perPage)
             ->withQueryString();
     }
 
     /**
-     * @param  Builder<Site>  $query
-     * @return Builder<Site>
+     * @param  Builder<Website>  $query
+     * @return Builder<Website>
      */
     private function constrain(Builder $query, CatalogFilters $filters): Builder
     {
         return $query
-            ->when($filters->categories !== [], fn (Builder $q) => $q->whereIn('category', $filters->categories))
-            ->when($filters->language, fn (Builder $q, string $language) => $q->where('language', $language))
-            ->when($filters->minTraffic, fn (Builder $q, int $value) => $q->where('traffic', '>=', $value))
-            ->when($filters->maxPriceMinorUnits, fn (Builder $q, int $value) => $q->where('price_minor_units', '<=', $value))
-            ->when($filters->minDomainRating, fn (Builder $q, int $value) => $q->where('domain_rating', '>=', $value))
-            ->when($filters->maxSpamScore, fn (Builder $q, int $value) => $q->where('spam_score', '<=', $value));
+            ->when($filters->categories !== [], fn (Builder $q) => $q->whereIn('websites.category_id', $filters->categories))
+            ->when($filters->language, fn (Builder $q, string $code) => $q->whereHas(
+                'primaryLanguage',
+                fn ($sub) => $sub->where('code', $code),
+            ))
+            ->when($filters->minTraffic, fn (Builder $q, int $v) => $q->where('metrics.monthly_traffic', '>=', $v))
+            ->when($filters->maxPriceCents, fn (Builder $q, int $v) => $q->where('website_prices.price_cents', '<=', $v))
+            ->when($filters->minDomainRating, fn (Builder $q, int $v) => $q->where('metrics.ahrefs_dr', '>=', $v))
+            ->when($filters->maxSpamScore, fn (Builder $q, int $v) => $q->where('metrics.spam_score', '<=', $v));
+    }
+
+    /** Whitelisted so a sort parameter can never reach the query as raw SQL. */
+    private function sortColumn(string $sort): string
+    {
+        return match ($sort) {
+            'price' => 'website_prices.price_cents',
+            'domain_rating' => 'metrics.ahrefs_dr',
+            'domain_authority' => 'metrics.moz_da',
+            'spam_score' => 'metrics.spam_score',
+            default => 'metrics.monthly_traffic',
+        };
     }
 }

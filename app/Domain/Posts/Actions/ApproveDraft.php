@@ -4,21 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domain\Posts\Actions;
 
-use App\Domain\Posts\DTOs\PostStatus;
+use App\Domain\Posts\Enums\PostStatus;
 use App\Domain\Posts\Models\Post;
-use RuntimeException;
 
+/**
+ * The advertiser signs off the writer's draft and the publisher goes on to post
+ * it. The illegal-move check lives in the observer, so this does not repeat it.
+ */
 final class ApproveDraft
 {
-    /** The advertiser signs off the writer's draft; the publisher then posts it. */
-    public function handle(Post $post): Post
+    public function handle(Post $post, ?string $note = null): Post
     {
-        if ($post->status !== PostStatus::ContentReview->value) {
-            throw new RuntimeException('Only a post in content review can be approved.');
-        }
+        $post->article?->update(['approved_at' => now()]);
 
-        $post->update(['status' => PostStatus::InProgress->value]);
-
-        return $post->refresh();
+        return $post->transitionTo(PostStatus::Posted, $note);
     }
 }

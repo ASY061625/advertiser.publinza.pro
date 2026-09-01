@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Domain\Billing\Models\Order;
+use App\Domain\Trading\Enums\OrderStatus;
+use App\Domain\Trading\Models\Order;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class OrderController extends Controller
 
     public function refund(Order $order): RedirectResponse
     {
-        $order->update(['status' => 'refunded']);
+        $order->update(['status' => OrderStatus::Refunded]);
 
         return back()->with('success', 'Order refunded');
     }

@@ -4,40 +4,30 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Actions;
 
-use App\Domain\Billing\DTOs\Money;
-use App\Domain\Billing\Models\Transaction;
 use App\Domain\Billing\Models\Wallet;
+use App\Domain\Trading\Models\Order;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
+/**
+ * Checkout commits the order total rather than spending it. The publisher is
+ * paid out of the frozen amount once the post is verified as live.
+ */
 final class FreezeFundsForOrder
 {
-    /**
-     * Checkout freezes the order total rather than spending it. The publisher is
-     * paid from the frozen amount once the post goes live.
-     */
-    public function handle(User $user, Money $amount, int $orderId): Wallet
+    public function handle(User $user, Order $order): Wallet
     {
-        return DB::transaction(function () use ($user, $amount, $orderId): Wallet {
-            /** @var Wallet|null $wallet */
-            $wallet = Wallet::query()->lockForUpdate()->firstWhere('user_id', $user->id);
+        /** @var Wallet|null $wallet */
+        $wallet = Wallet::query()->firstWhere('user_id', $user->id);
 
-            if ($wallet === null || $wallet->availableMinorUnits() < $amount->minorUnits) {
-                throw new RuntimeException('Not enough available balance to place this order.');
-            }
+        if ($wallet === null) {
+            throw new RuntimeException("Advertiser #{$user->id} has no wallet to charge.");
+        }
 
-            $wallet->increment('frozen_minor_units', $amount->minorUnits);
+        // Throws InsufficientFunds if the balance cannot cover it. The check
+        // happens under the row lock inside freeze(), not here.
+        $wallet->freeze($order->total(), $order, "Order {$order->order_number}");
 
-            Transaction::query()->create([
-                'wallet_id' => $wallet->id,
-                'type' => 'freeze',
-                'amount_minor_units' => -$amount->minorUnits,
-                'reference_type' => 'order',
-                'reference_id' => (string) $orderId,
-            ]);
-
-            return $wallet->refresh();
-        });
+        return $wallet->refresh();
     }
 }

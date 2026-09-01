@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domain\Messaging\Actions;
 
-use App\Domain\Messaging\Models\Thread;
+use App\Domain\Messaging\Enums\SenderType;
+use App\Domain\Messaging\Models\Conversation;
 
 final class MarkThreadRead
 {
     /** Marks everything the given side did not write as read. */
-    public function handle(Thread $thread, string $readerType): int
+    public function handle(Conversation $conversation, SenderType $reader): int
     {
-        return $thread->messages()
+        return $conversation->messages()
             ->whereNull('read_at')
-            ->where('author_type', '!=', $readerType)
+            ->where('sender_type', '!=', $reader->value)
             ->update(['read_at' => now()]);
     }
 }

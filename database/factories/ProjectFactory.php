@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -23,10 +24,15 @@ class ProjectFactory extends Factory
         return [
             'user_id' => User::factory(),
             'name' => fake()->catchPhrase(),
-            'target_url' => fake()->url(),
-            'anchor_text' => fake()->words(3, true),
-            'brief' => fake()->paragraph(),
-            'status' => 'draft',
+            'website_url' => fake()->url(),
+            'category_id' => null,
+            'status' => ProjectStatus::Active,
+            'publisher_task' => fake()->paragraph(),
         ];
+    }
+
+    public function archived(): static
+    {
+        return $this->state(fn (): array => ['status' => ProjectStatus::Archived]);
     }
 }

@@ -46,7 +46,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/catalog/{site}', [CatalogController::class, 'show'])->name('catalog.show');
 
-    Route::post('/cart/{site}', [CartController::class, 'store'])->name('cart.store');
+    Route::post('/cart/{website}', [CartController::class, 'store'])->name('cart.store');
     Route::delete('/cart/{item}', [CartController::class, 'destroy'])->name('cart.destroy');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
 
@@ -56,6 +56,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/posts', [PostController::class, 'index'])->name('posts.index');
     Route::get('/posts/{post}', [PostController::class, 'show'])->name('posts.show');
     Route::post('/posts/{post}/approve', [PostController::class, 'approve'])->name('posts.approve');
+    Route::post('/posts/{post}/cancel', [PostController::class, 'cancel'])->name('posts.cancel');
 
     Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
     Route::get('/messages/{thread}', [MessageController::class, 'show'])->name('messages.show');

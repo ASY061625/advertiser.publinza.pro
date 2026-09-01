@@ -4,23 +4,34 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domain\Billing\Models\Invoice;
+use App\Domain\Billing\Models\PaymentMethod;
 use App\Domain\Billing\Models\Wallet;
+use App\Domain\Catalog\Models\Blacklist;
+use App\Domain\Catalog\Models\Favorite;
+use App\Domain\Catalog\Models\Website;
+use App\Domain\Catalog\Models\Wishlist;
+use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Messaging\Models\Conversation;
+use App\Domain\Posts\Models\Post;
 use App\Domain\Projects\Models\Project;
+use App\Domain\Trading\Models\Cart;
+use App\Domain\Trading\Models\Order;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
  * An advertiser. Staff accounts live in App\Domain\Admin\Models\Admin on a
- * separate guard.
+ * separate guard and a separate table.
  *
- * @property int $id
- * @property string $name
- * @property string $email
+ * @property UserStatus $status
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -28,13 +39,26 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory;
 
     use Notifiable;
+    use SoftDeletes;
 
-    protected $fillable = ['name', 'email', 'password', 'company'];
+    protected $fillable = [
+        'email',
+        'password',
+        'name',
+        'company',
+        'country',
+        'vat_no',
+        'phone',
+        'timezone',
+        'locale',
+        'status',
+        'referrer_source',
+    ];
 
     /**
      * @var list<string>
      */
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'two_factor_secret'];
 
     /**
      * @return array<string, string>
@@ -44,8 +68,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'status' => UserStatus::class,
         ];
     }
+
+    public function isActive(): bool
+    {
+        return $this->status === UserStatus::Active;
+    }
+
+    // ---------------------------------------------------------- relationships
 
     /**
      * @return HasOne<Wallet, $this>
@@ -56,10 +88,97 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * @return HasOne<Cart, $this>
+     */
+    public function cart(): HasOne
+    {
+        return $this->hasOne(Cart::class);
+    }
+
+    /**
      * @return HasMany<Project, $this>
      */
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
+    }
+
+    /**
+     * @return HasMany<Post, $this>
+     */
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    /**
+     * @return HasMany<Order, $this>
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /**
+     * @return HasMany<Invoice, $this>
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * @return HasMany<PaymentMethod, $this>
+     */
+    public function paymentMethods(): HasMany
+    {
+        return $this->hasMany(PaymentMethod::class);
+    }
+
+    /**
+     * @return HasMany<Wishlist, $this>
+     */
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
+
+    /**
+     * @return HasMany<Conversation, $this>
+     */
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    /**
+     * Sites this advertiser has starred.
+     *
+     * @return BelongsToMany<Website, $this>
+     */
+    public function favoriteWebsites(): BelongsToMany
+    {
+        return $this->belongsToMany(Website::class, 'favorites')->withTimestamps();
+    }
+
+    /**
+     * @return HasMany<Favorite, $this>
+     */
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
+    /**
+     * @return HasMany<Blacklist, $this>
+     */
+    public function blacklists(): HasMany
+    {
+        return $this->hasMany(Blacklist::class);
+    }
+
+    protected static function newFactory(): UserFactory
+    {
+        return UserFactory::new();
     }
 }

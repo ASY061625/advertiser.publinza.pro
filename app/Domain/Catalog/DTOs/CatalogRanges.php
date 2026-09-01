@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\DTOs;
 
 /**
- * Min/max per metric across the whole filtered catalog.
+ * Min/max per metric across the whole active catalog.
  *
- * The quant-bars in the catalog table scale against this, not against the
- * visible page — otherwise the bars would rescale on every pagination click and
- * a buyer could not compare shapes between pages.
+ * The catalog quant-bars scale against these, not against the visible page.
  */
 final readonly class CatalogRanges
 {
@@ -22,6 +20,8 @@ final readonly class CatalogRanges
         public int $domainAuthorityMax,
         public int $spamScoreMin,
         public int $spamScoreMax,
+        public int $priceMinCents = 0,
+        public int $priceMaxCents = 0,
     ) {}
 
     /**
@@ -34,6 +34,7 @@ final readonly class CatalogRanges
             'domainRating' => [$this->domainRatingMin, $this->domainRatingMax],
             'domainAuthority' => [$this->domainAuthorityMin, $this->domainAuthorityMax],
             'spamScore' => [$this->spamScoreMin, $this->spamScoreMax],
+            'price' => [$this->priceMinCents, $this->priceMaxCents],
         ];
     }
 }
