@@ -124,6 +124,15 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     // Literal segments before the {project} wildcard, or "view" is resolved
     // as a project id.
     Route::patch('/projects/view', [ProjectController::class, 'view'])->name('projects.view');
+    Route::patch('/projects/draft', [ProjectController::class, 'saveDraft'])->name('projects.draft.save');
+    Route::delete('/projects/draft', [ProjectController::class, 'discardDraft'])->name('projects.draft.discard');
+
+    // Throttled hard: this is the one endpoint that makes the server fetch an
+    // address the caller typed, so it is the one worth rate-limiting per user
+    // rather than trusting the form to behave.
+    Route::post('/projects/preview', [ProjectController::class, 'preview'])
+        ->middleware('throttle:20,1')
+        ->name('projects.preview');
 
     Route::resource('projects', ProjectController::class)->except(['edit']);
     Route::post('/projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');

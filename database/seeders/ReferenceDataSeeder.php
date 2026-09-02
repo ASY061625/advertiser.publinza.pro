@@ -70,11 +70,18 @@ class ReferenceDataSeeder extends Seeder
         ['ZA', 'South Africa', 'Africa'],
     ];
 
-    /** 12 sensitive topics. */
+    /**
+     * The topics a site can declare it accepts.
+     *
+     * Betting lives inside Gambling rather than beside it — publishers accept
+     * or refuse the category as a whole, and splitting it would mean tagging
+     * every site twice to mean one thing.
+     */
     public const SENSITIVE_TOPICS = [
         ['Gambling', 'Casino, betting and lottery content.'],
         ['CBD & cannabis', 'CBD, hemp and cannabis products.'],
-        ['Adult', 'Adult and dating content.'],
+        ['Adult', 'Adult content.'],
+        ['Dating', 'Dating apps and matchmaking services.'],
         ['Cryptocurrency', 'Crypto, tokens and exchanges.'],
         ['Forex & trading', 'Leveraged trading and forex brokers.'],
         ['Pharmaceuticals', 'Prescription and over-the-counter medication.'],

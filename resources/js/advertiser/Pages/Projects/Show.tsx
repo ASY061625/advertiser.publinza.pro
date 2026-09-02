@@ -20,6 +20,8 @@ interface ProjectDetail {
 interface Props {
     project: ProjectDetail;
     categories: { id: number; name: string }[];
+    /** Flashed by the create wizard, read once. */
+    justCreated?: boolean;
 }
 
 /**
@@ -30,7 +32,7 @@ interface Props {
  * links to so a row click and the Edit action both land somewhere real rather
  * than on a page that does not exist. Expect the tab strip to grow.
  */
-export default function ProjectsShow({ project, categories }: Props) {
+export default function ProjectsShow({ project, categories, justCreated = false }: Props) {
     const initialTab = new URLSearchParams(window.location.search).get('tab') === 'settings' ? 'settings' : 'general';
     const [tab, setTab] = useState<'general' | 'settings'>(initialTab);
 
@@ -83,22 +85,55 @@ export default function ProjectsShow({ project, categories }: Props) {
 
             <div className="mt-5 max-w-xl">
                 {tab === 'general' ? (
-                    <dl className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-4 gap-y-3 rounded-card border border-subtle bg-card p-5 text-sm shadow-card">
-                        {(
-                            [
-                                ['Status', project.status === 'archived' ? 'Archived' : 'Active'],
-                                ['Category', project.category?.name ?? '—'],
-                                ['Folders', project.folders.map((f) => f.name).join(', ') || '—'],
-                                ['Created', project.created_at ? date(project.created_at) : '—'],
-                                ['Notes for writers', project.publisher_task ?? '—'],
-                            ] as [string, string][]
-                        ).map(([label, value]) => (
-                            <div key={label} className="contents">
-                                <dt className="text-ink-500">{label}</dt>
-                                <dd className="whitespace-pre-wrap text-ink-900">{value}</dd>
+                    <>
+                        {justCreated && (
+                            <div className="mb-4 rounded-card border border-brand bg-brand-subtle p-4">
+                                <h2 className="font-sora text-md font-semibold text-ink-900">
+                                    {project.name} is ready.
+                                </h2>
+                                <p className="mt-1 text-sm text-ink-700">
+                                    Next: pick the sites you want to be published on. Every one in the catalog is a site
+                                    we own and run, so a placement you order goes live.
+                                </p>
+                                <Link href="/catalog" className="mt-3 inline-block">
+                                    <Button>Find a website</Button>
+                                </Link>
                             </div>
-                        ))}
-                    </dl>
+                        )}
+
+                        <dl className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-4 gap-y-3 rounded-card border border-subtle bg-card p-5 text-sm shadow-card">
+                            {(
+                                [
+                                    ['Status', project.status === 'archived' ? 'Archived' : 'Active'],
+                                    ['Category', project.category?.name ?? '—'],
+                                    ['Folders', project.folders.map((f) => f.name).join(', ') || '—'],
+                                    ['Created', project.created_at ? date(project.created_at) : '—'],
+                                ] as [string, string][]
+                            ).map(([label, value]) => (
+                                <div key={label} className="contents">
+                                    <dt className="text-ink-500">{label}</dt>
+                                    <dd className="whitespace-pre-wrap text-ink-900">{value}</dd>
+                                </div>
+                            ))}
+
+                            <div className="contents">
+                                <dt className="text-ink-500">Notes for writers</dt>
+                                <dd className="min-w-0 text-ink-900">
+                                    {project.publisher_task ? (
+                                        // Authored in the wizard's editor and put
+                                        // through HtmlSanitizer before it was
+                                        // stored; see ProjectWizardData.
+                                        <div
+                                            className="prose-publinza max-w-none"
+                                            dangerouslySetInnerHTML={{ __html: project.publisher_task }}
+                                        />
+                                    ) : (
+                                        '—'
+                                    )}
+                                </dd>
+                            </div>
+                        </dl>
+                    </>
                 ) : (
                     <SettingsForm project={project} categories={categories} />
                 )}

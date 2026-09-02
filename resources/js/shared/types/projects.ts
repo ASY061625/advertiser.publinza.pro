@@ -13,6 +13,8 @@ export interface ProjectRow {
     name: string;
     websiteUrl: string;
     category: string | null;
+    /** Chosen in the wizard; null on projects created before it existed. */
+    color: string | null;
     status: string;
     statusLabel: string;
     isArchived: boolean;

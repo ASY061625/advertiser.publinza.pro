@@ -204,6 +204,7 @@ final class ListProjects
             'name' => $project->name,
             'websiteUrl' => $project->website_url,
             'category' => $project->category?->name,
+            'color' => $project->color,
             'status' => $project->status->value,
             'statusLabel' => $project->status->label(),
             'isArchived' => $project->status === ProjectStatus::Archived,

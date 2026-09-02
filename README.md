@@ -487,7 +487,93 @@ shadows `__get` and the attribute is never read from the attribute bag at all.
 
 `Projects/Show` covers General and Settings so a row click and the Edit action land
 somewhere real. The full project screen — targeting, landing pages, competitors, folders —
-is its own piece of work and will absorb these two tabs.
+is its own piece of work and will absorb these two tabs. Its General tab also carries the
+one-time "Find a website" card the create wizard flashes on success.
+
+---
+
+## Create-project wizard
+
+`/projects/create` is three steps: the site, targeting, landing pages. Back navigation keeps
+everything because there is one state object and the steps render from it — going back
+changes which step is visible and nothing else.
+
+### Fetching a URL someone typed
+
+Step 1 reads the site's title, description and favicon so a typo is caught before the
+advertiser is three steps deep. That means the server makes an HTTP request to an address a
+form supplied, which is a server-side request forgery primitive: the request originates
+inside Publinza's network, with whatever that network trusts.
+
+`App\Support\OutboundUrlGuard` is an allowlist of shapes, not a blocklist of hosts:
+
+- http and https only;
+- the host must resolve, and **every** address it resolves to must be public unicast —
+  loopback, private ranges, link-local (where cloud metadata lives), carrier-grade NAT and
+  the IPv6 equivalents are all refused, including IPv4-mapped, 6to4 and NAT64 forms that
+  wrap an IPv4 address a naive check would miss;
+- the connection is **pinned to the address that was vetted** (`CURLOPT_RESOLVE`). Handing
+  curl the hostname after checking DNS leaves a window for the name to resolve again to
+  something private. That gap is the one usually left open.
+
+Redirects are followed by hand, three at most, re-vetting every hop, because a public URL
+that 302s to `169.254.169.254` is the standard bypass. The body is capped at 512KB and the
+transfer time-boxed. Only extracted fields come back — the page body never reaches the
+client, so this cannot read a response the browser could not have fetched itself. The
+endpoint is throttled to 20 requests a minute per user. Twenty-one attack shapes are pinned
+in `tests/Feature/Projects/SitePreviewSecurityTest.php`.
+
+### Drafts are not projects
+
+Autosave writes to `project_drafts`, one row per advertiser, not to a `draft` status on
+`projects`. A status would put unfinished rows inside every query that lists, counts or
+reports on projects, each of which would have to remember to exclude it — and the last time
+this codebase had a phantom 'draft' project status it produced three silent failures. A
+draft has no schema to satisfy; the payload is JSON precisely because a partial answer
+should not have to satisfy the constraints a finished project does.
+
+Autosave is debounced and fire-and-forget: it never blocks a keystroke and never surfaces a
+failure mid-sentence. The draft is discarded only once the project is real.
+
+### Same-site landing pages
+
+A landing page has to be on the promoted site's registrable domain, so `blog.acme.co.uk` and
+`shop.acme.co.uk` match but `acme.co.uk` and `other.co.uk` do not. `App\Support\PublicSuffix`
+is an approximation of the Public Suffix List covering the multi-label suffixes people
+actually use; the real list needs a package and a refresh schedule.
+
+Its failure mode is deliberate. An unknown multi-label suffix makes two different sites look
+like one, so the check is *permissive* where it is wrong — this is a data-entry aid, not a
+security boundary, and wrongly blocking someone's own URL costs more than letting an unusual
+TLD through. The message names both domains, because "must be the same domain" leaves
+someone staring at two URLs that look alike to them.
+
+### Everything else
+
+- **URLs are normalised once**, in `ProjectWizardData`, so a draft and a submit store the
+  same spelling: https, lower-cased host, punycoded IDN, no default port, no fragment. The
+  path keeps its case — hosts are case-insensitive, paths are not.
+- **The brief is a contenteditable**, so it arrives as whatever HTML the client sent. Paste
+  is forced to plain text and the result goes through `HtmlSanitizer` on the way in. The
+  toolbar is a convenience; the sanitiser is the control. Its character limit is measured on
+  the text, not the markup — charging someone for `<strong>` tags they cannot see would be
+  nonsense.
+- **The suggested colour is computed server-side** and returned with the preview, so client
+  and server cannot disagree about what a domain suggests. It stops overriding once a swatch
+  is clicked.
+- **The anchor-text advisory never blocks.** The heuristic behind it is crude enough that it
+  should not.
+- **The disabled Next button says what it is waiting for.** The tooltip wraps the button
+  rather than sitting on it — a disabled button fires no pointer events, which is how
+  "disabled with no explanation" usually happens by accident.
+
+### A design-system bug this surfaced
+
+`Input` and `Select` with `hideLabel` returned a bare control and **silently dropped `error`
+and `hint`**, leaving `aria-describedby` pointing at an element that did not exist. Every
+label-hidden field in the product — the posts search, the projects search, the landing-page
+rows — could not show a validation message. Both now route through `Field`, which learned
+`hideLabel` when the posts grid needed it.
 
 ---
 

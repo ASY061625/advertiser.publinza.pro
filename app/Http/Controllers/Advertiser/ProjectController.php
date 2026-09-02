@@ -4,18 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advertiser;
 
+use App\Domain\Catalog\Models\Country;
+use App\Domain\Catalog\Models\Language;
+use App\Domain\Catalog\Models\SensitiveTopic;
 use App\Domain\Catalog\Models\WebsiteCategory;
 use App\Domain\Projects\Actions\ArchiveProject;
-use App\Domain\Projects\Actions\CreateProject;
+use App\Domain\Projects\Actions\CreateProjectFromWizard;
 use App\Domain\Projects\Actions\DeleteProject;
+use App\Domain\Projects\Actions\FetchSitePreview;
 use App\Domain\Projects\Actions\ListProjects;
 use App\Domain\Projects\DTOs\ProjectData;
 use App\Domain\Projects\DTOs\ProjectFilters;
+use App\Domain\Projects\DTOs\ProjectWizardData;
 use App\Domain\Projects\Models\Project;
+use App\Domain\Projects\Models\ProjectDraft;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Advertiser\StoreProjectRequest;
+use App\Http\Requests\Advertiser\StoreProjectWizardRequest;
 use App\Http\Requests\Advertiser\UpdateProjectRequest;
 use App\Support\GridPreferences;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -45,14 +52,76 @@ class ProjectController extends Controller
 
     public function create(Request $request): Response
     {
-        return inertia('Projects/Create', ['categories' => $this->categories()]);
+        $draft = ProjectDraft::query()->where('user_id', $request->user()->id)->first();
+
+        return inertia('Projects/Create', [
+            'categories' => $this->categories(),
+            'topics' => SensitiveTopic::query()->orderBy('name')->get(['id', 'name'])->all(),
+            'countries' => Country::query()->orderBy('name')->get(['id', 'code', 'name'])->all(),
+            'languages' => Language::query()->orderBy('name')->get(['id', 'code', 'name'])->all(),
+            'colors' => ProjectWizardData::COLORS,
+            // Resumed exactly where it was left, including which step.
+            'draft' => $draft === null ? null : ['step' => $draft->step, 'payload' => $draft->payload],
+        ]);
     }
 
-    public function store(StoreProjectRequest $request, CreateProject $createProject): RedirectResponse
+    /**
+     * Autosave. Deliberately silent: it returns no content and the wizard does
+     * not wait for it, because a save that interrupted typing would be worse
+     * than losing the draft it is trying to protect.
+     */
+    public function saveDraft(Request $request): JsonResponse
     {
-        $project = $createProject->handle($request->user(), ProjectData::fromArray($request->validated()));
+        $validated = $request->validate([
+            'step' => ['required', 'integer', 'min:1', 'max:3'],
+            'payload' => ['required', 'array'],
+        ]);
 
-        return to_route('projects.show', $project)->with('success', 'Project created');
+        /** @var array<string, mixed> $payload */
+        $payload = $validated['payload'];
+
+        ProjectDraft::query()->updateOrCreate(
+            ['user_id' => $request->user()->id],
+            [
+                'step' => (int) $validated['step'],
+                'payload' => ProjectWizardData::fromArray($payload)->toDraftPayload($payload),
+            ],
+        );
+
+        return response()->json(['saved_at' => now()->toIso8601String()]);
+    }
+
+    public function discardDraft(Request $request): RedirectResponse
+    {
+        ProjectDraft::query()->where('user_id', $request->user()->id)->delete();
+
+        return to_route('projects.index');
+    }
+
+    /**
+     * The site preview behind step 1's URL field.
+     *
+     * Throttled in the route: it makes the server fetch an address someone
+     * typed, so it is the one endpoint here that can be pointed at a third
+     * party. See FetchSitePreview for what stops it being pointed inwards.
+     */
+    public function preview(Request $request, FetchSitePreview $preview): JsonResponse
+    {
+        $validated = $request->validate(['url' => ['required', 'string', 'max:2048']]);
+
+        return response()->json($preview->handle((string) $validated['url']));
+    }
+
+    public function store(StoreProjectWizardRequest $request, CreateProjectFromWizard $create): RedirectResponse
+    {
+        $project = $create->handle($request->user(), ProjectWizardData::fromArray($request->validated()));
+
+        return to_route('projects.show', $project)
+            ->with('success', 'Project created')
+            // Read once by the General tab to offer the next step. Flashed
+            // rather than stored: it is about this moment, not about the
+            // project, and it should not reappear on a later visit.
+            ->with('just_created', true);
     }
 
     public function show(Project $project): Response
@@ -62,6 +131,7 @@ class ProjectController extends Controller
         return inertia('Projects/Show', [
             'project' => $project->load(['category:id,name', 'folders:id,project_id,name']),
             'categories' => $this->categories(),
+            'justCreated' => (bool) session('just_created', false),
         ]);
     }
 

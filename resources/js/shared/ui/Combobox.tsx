@@ -22,6 +22,7 @@ export interface ComboboxProps {
     error?: string;
     disabled?: boolean;
     loading?: boolean;
+    required?: boolean;
     className?: string;
 }
 
@@ -40,6 +41,7 @@ export function Combobox({
     error,
     disabled,
     loading = false,
+    required = false,
     className,
 }: ComboboxProps) {
     const id = useId();
@@ -92,7 +94,7 @@ export function Combobox({
     }
 
     return (
-        <Field id={id} label={label} hint={hint} error={error} className={className}>
+        <Field id={id} label={label} hint={hint} error={error} required={required} className={className}>
             <div ref={ref} className="relative">
                 <input
                     id={id}

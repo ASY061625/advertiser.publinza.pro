@@ -62,19 +62,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         </div>
     );
 
-    if (hideLabel) {
-        return (
-            <div>
-                <label htmlFor={selectId} className="sr-only">
-                    {label}
-                </label>
-                {control}
-            </div>
-        );
-    }
-
+    // Always a Field, hidden label or not. The earlier version returned a
+    // bare control for hideLabel and silently dropped `error` and `hint` with
+    // it — so a validation message on a toolbar or table input was invisible,
+    // and aria-describedby pointed at an element that did not exist.
     return (
-        <Field id={selectId} label={label} hint={hint} error={error} required={props.required}>
+        <Field id={selectId} label={label} hint={hint} error={error} required={props.required} hideLabel={hideLabel}>
             {control}
         </Field>
     );

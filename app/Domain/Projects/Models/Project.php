@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $name
  * @property string $website_url
  * @property int|null $category_id
+ * @property string|null $color
  * @property ProjectStatus $status
  * @property string|null $publisher_task
  */
@@ -49,6 +50,7 @@ class Project extends Model
         'name',
         'website_url',
         'category_id',
+        'color',
         'status',
         'publisher_task',
     ];

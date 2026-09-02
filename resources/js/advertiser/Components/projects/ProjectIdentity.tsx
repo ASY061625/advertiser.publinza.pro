@@ -4,10 +4,10 @@ import type { ProjectRow } from '@shared/types/projects';
 /**
  * The dot, name, promoted URL and category — one project's identity.
  *
- * The dot's colour is derived from the project id rather than stored, because
- * nobody asked to pick one and a column nobody sets is a column that is always
- * the default. Derived means stable: the same project is the same colour on
- * every screen, every session, without a migration or a preference to keep.
+ * The colour is whatever the create wizard stored. Projects made before that
+ * column existed have none, so they fall back to a value derived from the id:
+ * the same project stays the same colour on every screen without needing a
+ * backfill.
  *
  * It is decoration, not data. Two projects can share a hue and nothing is lost,
  * because the name is right beside it — which is why the palette is picked for
@@ -22,8 +22,8 @@ const DOTS = [
     'var(--success)',
 ];
 
-export function projectDot(id: number): string {
-    return DOTS[id % DOTS.length] ?? DOTS[0]!;
+export function projectDot(project: { id: number; color?: string | null }): string {
+    return project.color ?? DOTS[project.id % DOTS.length] ?? DOTS[0]!;
 }
 
 export function ProjectIdentity({ project, size = 'row' }: { project: ProjectRow; size?: 'row' | 'card' }) {
@@ -32,7 +32,7 @@ export function ProjectIdentity({ project, size = 'row' }: { project: ProjectRow
             <span
                 aria-hidden="true"
                 className="mt-1.5 size-2.5 shrink-0 rounded-pill"
-                style={{ backgroundColor: projectDot(project.id) }}
+                style={{ backgroundColor: projectDot(project) }}
             />
 
             <span className="flex min-w-0 flex-col gap-0.5">

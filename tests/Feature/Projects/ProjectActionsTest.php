@@ -26,6 +26,9 @@ it('creates a project that can be read back', function (): void {
             'website_url' => 'https://nomad.test',
             'category_id' => $category->id,
             'publisher_task' => 'Keep it plain.',
+            // /projects is the wizard's submit, and a project is not finished
+            // without somewhere for its links to point.
+            'landing_pages' => [['anchor_text' => 'pricing', 'url' => 'https://nomad.test/pricing']],
         ])
         ->assertRedirect();
 
@@ -37,7 +40,7 @@ it('creates a project that can be read back', function (): void {
     expect($project->name)->toBe('Nomad Bank')
         ->and($project->website_url)->toBe('https://nomad.test')
         ->and($project->category_id)->toBe($category->id)
-        ->and($project->publisher_task)->toBe('Keep it plain.')
+        ->and($project->publisher_task)->toContain('Keep it plain.')
         ->and($project->status)->toBe(ProjectStatus::Active);
 
     // And the list renders it, which is what actually reads the status back.
