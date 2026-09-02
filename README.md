@@ -414,6 +414,83 @@ unusable without one, and this is a preference someone sets once.
 
 ---
 
+## Projects list
+
+`/projects` is the reporting surface for an advertiser's campaigns: post mix and
+spend per project, in a table or as cards.
+
+### Two queries, whatever the project count
+
+The projects, then one grouped aggregate over their posts — conditional `SUM(CASE WHEN …)`
+so it means the same thing on MySQL and on the SQLite the tests use. Ten figures per project
+computed as a subquery per column per row would be forty queries for four projects; a test
+asserts the count stays at three regardless.
+
+Spend is defined here exactly as `GetDashboardMetrics` defines it — the price of posts that
+went live in the window. Two screens disagreeing about what an advertiser spent last month
+is a support ticket, not a rounding difference.
+
+### The stacked bar sums to the number above it
+
+Four named segments plus a fifth for the remainder, all disjoint by status:
+
+| Segment | Statuses |
+| --- | --- |
+| New | `new` |
+| In progress | `in_progress`, `content_review` |
+| Posted | `completed`, and `posted` past its verification window |
+| Frozen | `posted` still inside its window — live, money not yet settled |
+| Other | `draft`, `rejected`, `cancelled`, `refunded` |
+
+Frozen sits *beside* Posted rather than slicing through it, because what the bar
+distinguishes is whether the money has settled. Naming only the first four would leave four
+of the nine statuses out and produce widths that do not add up to the total printed above
+them, which is a picture of a population that does not exist.
+
+The **Frozen price** column answers a different question and is deliberately wider: all
+funds the wallet is still holding for the project, which is every status where
+`holdsFrozenFunds()` is true. It matches the wallet; the bar segment matches the link.
+
+### Numbers that decline to lie
+
+- **Average price is over completed posts only.** A post still being written has a quoted
+  price, not one anyone has paid.
+- **No completed posts shows an em dash, not `$0.00`** — zero would read as "these
+  placements are free".
+- **A delta against a zero month is "New"**, not "up 100%".
+- **The footer totals are summed from the rendered rows**, not recomputed, so they cannot
+  disagree with the column above them.
+
+### Four bugs this screen surfaced
+
+All four came from an abandoned draft → new → active project flow that the enum was later
+reduced away from, leaving three places comparing against statuses that no longer existed:
+
+- **`CreateProject` wrote `status => 'draft'`** — not a `ProjectStatus` case, so a project
+  created through the app threw a `ValueError` the moment anything read it back.
+- **`ProjectData` carried `target_url`, `anchor_text` and `brief`** — *post* fields. None is
+  a column on `projects`, and `website_url` (NOT NULL) was never written. Creating a project
+  could not work.
+- **`ProjectPolicy` compared `status === 'draft'`** against an enum-cast attribute, so every
+  `update` and `publish` check returned false and every edit was denied.
+- **`PublishProject`** transitioned `draft → new`, neither of which exists. Removed, along
+  with a stale duplicate `PostStatus` enum under `Domain/Posts/DTOs` whose vocabulary
+  (`published`, `frozen`, no `posted`) contradicted the real one two directories away.
+
+`Project` and `User` now carry `@property` annotations for their cast attributes. Those are
+load-bearing: without them static analysis reads `status` as a plain string and cannot see
+that comparing it against the enum is meaningful, which is exactly how the same mistake got
+made three times. They must stay docblocks — a declared property on an Eloquent model
+shadows `__get` and the attribute is never read from the attribute bag at all.
+
+### Scope note
+
+`Projects/Show` covers General and Settings so a row click and the Edit action land
+somewhere real. The full project screen — targeting, landing pages, competitors, folders —
+is its own piece of work and will absorb these two tabs.
+
+---
+
 ## Layout
 
 ```
@@ -581,7 +658,7 @@ nothing and the tests skip loudly. Run them with `DB_CONNECTION=mysql`.
 
 ### PHPStan is not yet clean at level 6
 
-`make stan` currently reports around 200 findings. None is a defect — the ones that were have
+`make stan` currently reports around 290 findings. None is a defect — the ones that were have
 been fixed — but the gate does not pass, so it is worth knowing what is in there before you
 run it:
 

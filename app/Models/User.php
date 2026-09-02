@@ -35,7 +35,13 @@ use Illuminate\Notifications\Notifiable;
  * An advertiser. Staff accounts live in App\Domain\Admin\Models\Admin on a
  * separate guard and a separate table.
  *
+ * These stay docblock annotations rather than declared properties: a real
+ * property on an Eloquent model shadows __get, so the attribute would never be
+ * read from the model's attribute bag at all.
+ *
  * @property UserStatus $status
+ * @property array<string, mixed>|null $grid_preferences
+ * @property bool $sidebar_collapsed
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -45,6 +51,9 @@ class User extends Authenticatable implements MustVerifyEmail
     use Notifiable;
     use SoftDeletes;
 
+    /**
+     * @var list<string>
+     */
     protected $fillable = [
         'email',
         'password',

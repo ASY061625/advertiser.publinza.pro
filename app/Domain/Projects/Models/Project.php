@@ -22,6 +22,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * A campaign: one advertiser site, its targeting, and the posts bought for it.
+ *
+ * The @property lines are load-bearing, not decoration. Without them static
+ * analysis reads `status` as a plain string and cannot tell that comparing it
+ * against the enum is meaningful — which is how three separate places came to
+ * compare it against 'draft', a value ProjectStatus has never had, and fail
+ * silently under a strict comparison.
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property string $name
+ * @property string $website_url
+ * @property int|null $category_id
+ * @property ProjectStatus $status
+ * @property string|null $publisher_task
  */
 class Project extends Model
 {

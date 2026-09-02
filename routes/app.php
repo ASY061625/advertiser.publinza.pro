@@ -121,8 +121,13 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::delete('/cart/{item}', [CartController::class, 'destroy'])->name('cart.destroy');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
 
-    Route::resource('projects', ProjectController::class)->except(['destroy']);
-    Route::post('/projects/{project}/publish', [ProjectController::class, 'publish'])->name('projects.publish');
+    // Literal segments before the {project} wildcard, or "view" is resolved
+    // as a project id.
+    Route::patch('/projects/view', [ProjectController::class, 'view'])->name('projects.view');
+
+    Route::resource('projects', ProjectController::class)->except(['edit']);
+    Route::post('/projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');
+    Route::post('/projects/{project}/restore', [ProjectController::class, 'restore'])->name('projects.restore');
 
     Route::get('/posts', [PostController::class, 'index'])->name('posts.index');
 
