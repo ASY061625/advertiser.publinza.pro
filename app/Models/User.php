@@ -15,6 +15,7 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\TrustedDevice;
 use App\Domain\Messaging\Models\Conversation;
 use App\Domain\Posts\Models\Post;
+use App\Domain\Posts\Models\SavedView;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Trading\Models\Cart;
 use App\Domain\Trading\Models\Order;
@@ -73,10 +74,19 @@ class User extends Authenticatable implements MustVerifyEmail
             'last_login_at' => 'datetime',
             'sidebar_collapsed' => 'boolean',
             'changelog_read_at' => 'datetime',
+            'grid_preferences' => 'array',
             'two_factor_confirmed_at' => 'datetime',
             'password' => 'hashed',
             'status' => UserStatus::class,
         ];
+    }
+
+    /**
+     * @return HasMany<SavedView, $this>
+     */
+    public function savedViews(): HasMany
+    {
+        return $this->hasMany(SavedView::class)->orderBy('name');
     }
 
     public function isActive(): bool

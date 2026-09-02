@@ -21,6 +21,8 @@ export interface MultiSelectProps {
     disabled?: boolean;
     /** Chips beyond this collapse into a "+n more" chip. */
     maxVisibleChips?: number;
+    /** Hides the label visually for filter-bar use; it still announces. */
+    hideLabel?: boolean;
     className?: string;
 }
 
@@ -40,6 +42,7 @@ export function MultiSelect({
     error,
     disabled,
     maxVisibleChips = 3,
+    hideLabel = false,
     className,
 }: MultiSelectProps) {
     const id = useId();
@@ -77,7 +80,7 @@ export function MultiSelect({
     const overflow = selected.length - visible.length;
 
     return (
-        <Field id={id} label={label} hint={hint} error={error} className={className}>
+        <Field id={id} label={label} hint={hint} error={error} hideLabel={hideLabel} className={className}>
             <div ref={ref} className="relative">
                 <button
                     id={id}

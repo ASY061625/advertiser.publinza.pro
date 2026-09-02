@@ -309,6 +309,111 @@ data had been lost.
 
 ---
 
+## Posts grid
+
+`/posts` is where an advertiser manages every post across every project. Status tabs,
+nineteen filters, a sortable column-configurable table, bulk actions and a detail drawer —
+all of it server-side.
+
+### The query string is the state
+
+Every filter serialises to the URL and back, losslessly, and the test suite pins the round
+trip. That is what makes a filtered view shareable, bookmarkable and refresh-proof, and it
+is why a **saved view stores the query string rather than a bespoke filter format**: applying
+one and opening a link someone sent you are the same operation, so they cannot drift apart.
+
+Defaults are omitted, so a plain `/posts` stays a plain URL instead of growing twenty empty
+keys. Sort order and page size are excluded from "is this filtered?" — they arrange the grid
+rather than narrowing it, which is what keeps "you have no posts yet" and "nothing matches
+these filters" two different screens with two different things to do about them.
+
+### Tabs are lifecycle phases, not single statuses
+
+There are nine post statuses and eight tabs. Two statuses are the terminal end of a phase
+that already has a tab, so they are grouped rather than given tabs of their own:
+
+| Tab | Statuses |
+| --- | --- |
+| Posted | `posted`, `completed` |
+| Cancelled | `cancelled`, `refunded` |
+
+Otherwise the Posted tab would quietly empty out as posts aged past their verification
+window, and last month's live link would be findable only under All. Grouping is also what
+makes the tab counts sum to the All count — `ListPosts::tabCounts()` derives All from the
+sum rather than running a second query that could disagree with the first. A test asserts
+every status lands in exactly one tab, so a tenth status cannot be added without deciding
+where it belongs.
+
+Tab counts are computed under the current filters **minus the tab itself**, so a number
+answers "how many would I see if I clicked here" rather than always reading zero for every
+tab you are not standing on.
+
+### Everything happens in SQL
+
+Filtering, sorting and pagination are server-side; the client sends a query string and
+renders what comes back. A grid that holds every post an advertiser has ever bought cannot
+sort in PHP, and paginating after the fact would mean loading all of them to show 25.
+
+- Sorting by a related column uses a join, not a correlated subquery — the grid pages
+  through it, and a subquery per row does not scale.
+- Every sort ends with `posts.id desc` as a tiebreak. Without it two posts created in the
+  same second can swap places between pages and one of them is never seen.
+- `published_at` and `deadline_at` sort nulls last: "not published yet" is not the top of a
+  descending list.
+- Search covers domain, anchor text, target URL and post ID. An all-digit term also matches
+  the id, and `%` and `_` in a term are escaped so a wildcard is text rather than a pattern.
+
+### Two things that would have been quiet bugs
+
+**Article HTML is sanitised before it is sent.** `Article::body_html` is written by
+publishers and rendered unescaped in the drawer, inside the advertiser's authenticated
+session on app.publinza.pro — the exact shape of a stored XSS. `App\Support\HtmlSanitizer`
+reduces it to an allowlist of about twenty formatting tags: an allowlist, because a
+blocklist has to anticipate every vector and loses to the next one. Scripts, style, iframes,
+every `on*` handler, `javascript:` and `data:` URLs (including schemes smuggled past a naive
+check with a tab in the middle) all come out; links keep their href and leave with
+`rel="noopener noreferrer nofollow"`.
+
+**CSV cells are defused.** A cell beginning `=`, `+`, `-` or `@` is executed as a formula
+when the file opens. Anchor text and target URLs are advertiser-supplied and end up in a
+colleague's spreadsheet, so a leading formula character gets a quote in front of it.
+
+### Bulk actions re-resolve everything
+
+A list of ids from a browser is a request, not an authorisation, so every bulk action
+re-resolves the selection against the signed-in advertiser before touching anything. Beyond
+that:
+
+- **Cancel** skips posts past the cancellable window rather than failing the batch, and says
+  how many it skipped and why. Each post is its own transaction, so one refusal does not
+  roll back the thirty-nine that worked.
+- **Move to folder** only moves a post into a folder of its own project — a folder belongs
+  to a project, and moving across would silently reassign the post to another brief.
+- **Duplicate** always produces a draft, and carries the brief only: no order, no article,
+  no published URL, no history. A copy of a live placement must not claim to be live.
+- **Download articles** builds the zip to a temp file and streams it. An archive with
+  nothing in it reads as a broken download, so it carries a README explaining why.
+
+### One address per post
+
+`/posts/{id}` redirects to `/posts?post={id}` — the grid with that row's drawer open. The
+drawer shows everything a separate detail page would, and keeps the reader's place in a
+filtered, sorted, scrolled list of a hundred rows. A second page would be a second place the
+same information lives and a second thing to keep in step.
+
+### Columns
+
+Order and visibility persist per account in `users.grid_preferences`, filtered on the way
+out against the canonical list in `App\Support\PostGridPreferences` — a column removed from
+the product cannot linger in someone's saved order, and one added later is appended so it is
+visible rather than invisible to everyone who ever touched their settings. Website and
+Status cannot be hidden whatever a stored preference or a hand-edited request says.
+
+Reordering uses up/down buttons rather than drag-and-drop: dragging is nicer with a mouse and
+unusable without one, and this is a preference someone sets once.
+
+---
+
 ## Layout
 
 ```

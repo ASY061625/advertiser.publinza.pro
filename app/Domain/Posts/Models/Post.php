@@ -7,6 +7,7 @@ namespace App\Domain\Posts\Models;
 use App\Casts\MoneyCast;
 use App\Domain\Billing\DTOs\Money;
 use App\Domain\Catalog\Models\Website;
+use App\Domain\Messaging\Models\Conversation;
 use App\Domain\Posts\Enums\PostStatus;
 use App\Domain\Posts\Support\PostStatusContext;
 use App\Domain\Projects\Models\Project;
@@ -178,6 +179,17 @@ class Post extends Model
     public function statusHistory(): HasMany
     {
         return $this->hasMany(PostStatusHistory::class)->oldest('created_at');
+    }
+
+    /**
+     * Threads about this post. Plural because a post can accumulate more than
+     * one — a brief question and a later revision request are not one thread.
+     *
+     * @return HasMany<Conversation, $this>
+     */
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class)->latest('last_message_at');
     }
 
     protected static function newFactory(): PostFactory

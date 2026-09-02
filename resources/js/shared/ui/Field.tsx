@@ -9,6 +9,12 @@ export interface FieldProps {
     /** What happened and what to do next. */
     error?: string;
     required?: boolean;
+    /**
+     * Renders the label for screen readers only, for controls in a filter bar
+     * where a placeholder already names them. The label still exists and is
+     * still associated — it is never dropped, only visually hidden.
+     */
+    hideLabel?: boolean;
     children: ReactNode;
     className?: string;
 }
@@ -17,10 +23,10 @@ export interface FieldProps {
  * The label/hint/error frame every form control sits in, so the three states
  * look and announce the same way everywhere.
  */
-export function Field({ id, label, hint, error, required, children, className }: FieldProps) {
+export function Field({ id, label, hint, error, required, hideLabel = false, children, className }: FieldProps) {
     return (
         <div className={cn('flex flex-col gap-1.5', className)}>
-            <label htmlFor={id} className="text-sm font-medium text-ink-700">
+            <label htmlFor={id} className={cn('text-sm font-medium text-ink-700', hideLabel && 'sr-only')}>
                 {label}
                 {required && (
                     <span className="ml-1 text-danger" aria-hidden="true">

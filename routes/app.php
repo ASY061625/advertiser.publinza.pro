@@ -14,6 +14,7 @@ use App\Http\Controllers\Advertiser\CatalogController;
 use App\Http\Controllers\Advertiser\DashboardController;
 use App\Http\Controllers\Advertiser\MessageController;
 use App\Http\Controllers\Advertiser\PostController;
+use App\Http\Controllers\Advertiser\PostGridController;
 use App\Http\Controllers\Advertiser\ProjectController;
 use App\Http\Controllers\Advertiser\SearchController;
 use App\Http\Controllers\Advertiser\ShellController;
@@ -124,7 +125,19 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('/projects/{project}/publish', [ProjectController::class, 'publish'])->name('projects.publish');
 
     Route::get('/posts', [PostController::class, 'index'])->name('posts.index');
+
+    // The grid's own endpoints. These sit above /posts/{post} deliberately —
+    // a route with a literal segment must be declared before the wildcard that
+    // would otherwise swallow it and try to resolve "export" as a post id.
+    Route::get('/posts/export', [PostController::class, 'export'])->name('posts.export');
+    Route::post('/posts/bulk', [PostController::class, 'bulk'])->name('posts.bulk');
+    Route::post('/posts/views', [PostGridController::class, 'storeView'])->name('posts.views.store');
+    Route::delete('/posts/views/{view}', [PostGridController::class, 'destroyView'])->name('posts.views.destroy');
+    Route::patch('/posts/columns', [PostGridController::class, 'storeColumns'])->name('posts.columns');
+
     Route::get('/posts/{post}', [PostController::class, 'show'])->name('posts.show');
+    Route::get('/posts/{post}/detail', [PostController::class, 'detail'])->name('posts.detail');
+    Route::post('/posts/{post}/duplicate', [PostController::class, 'duplicate'])->name('posts.duplicate');
     Route::post('/posts/{post}/approve', [PostController::class, 'approve'])->name('posts.approve');
     Route::post('/posts/{post}/cancel', [PostController::class, 'cancel'])->name('posts.cancel');
 

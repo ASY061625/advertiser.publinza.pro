@@ -8,10 +8,15 @@ export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement
     error?: string;
     /** Header checkbox state when only some rows are selected. */
     indeterminate?: boolean;
+    /**
+     * Hides the label visually for checkboxes in a table header or row, which
+     * need a name for screen readers but have no room for one on screen.
+     */
+    hideLabel?: boolean;
 }
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Checkbox(
-    { label, hint, error, indeterminate = false, className, id, disabled, ...props },
+    { label, hint, error, indeterminate = false, hideLabel = false, className, id, disabled, ...props },
     ref,
 ) {
     const generated = useId();
@@ -63,7 +68,11 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
                 <span className="flex flex-col gap-0.5">
                     <label
                         htmlFor={boxId}
-                        className={cn('text-base', disabled ? 'text-ink-500' : 'cursor-pointer text-ink-700')}
+                        className={cn(
+                            'text-base',
+                            hideLabel && 'sr-only',
+                            disabled ? 'text-ink-500' : 'cursor-pointer text-ink-700',
+                        )}
                     >
                         {label}
                     </label>
