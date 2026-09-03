@@ -1,4 +1,4 @@
-import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { cn } from '@shared/lib/cn';
 
 export interface TabItem {
@@ -15,20 +15,55 @@ export interface TabsProps {
     value: string;
     onChange: (id: string) => void;
     className?: string;
+    /**
+     * Lets the tab row scroll sideways when the tabs are wider than the space,
+     * instead of wrapping. Only the row scrolls — the panel below stays the
+     * width of the page, which is the point: a `min-width` on the whole
+     * component would drag the panel's content off the right of a phone.
+     */
+    scrollable?: boolean;
+    /**
+     * Arrow keys move focus without switching tab; Enter or Space commits.
+     *
+     * The default is automatic activation, which is right when the panels are
+     * already loaded. Use this when activating a tab costs something — a page
+     * load, a request, a navigation — because with automatic activation you
+     * cannot arrow *past* such a tab to reach the ones after it.
+     */
+    manualActivation?: boolean;
 }
 
 /**
  * Underline tabs. Arrow keys move between tabs and Home/End jump to the ends,
- * per the WAI-ARIA tabs pattern.
+ * per the WAI-ARIA tabs pattern — activating as they go, or on Enter/Space when
+ * `manualActivation` is set.
  */
-export function Tabs({ items, value, onChange, className }: TabsProps) {
+export function Tabs({ items, value, onChange, className, scrollable = false, manualActivation = false }: TabsProps) {
     const baseId = useId();
     const listRef = useRef<HTMLDivElement>(null);
 
+    // Which tab the keyboard is on, which is only ever different from the
+    // selected one while arrowing through a manually-activated bar.
+    const [focused, setFocused] = useState(value);
+
+    useEffect(() => setFocused(value), [value]);
+
+    function focus(id: string) {
+        setFocused(id);
+        listRef.current?.querySelector<HTMLButtonElement>(`#${CSS.escape(`${baseId}-${id}`)}`)?.focus();
+    }
+
     function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
         const enabled = items.filter((item) => !item.disabled);
-        const current = enabled.findIndex((item) => item.id === value);
+        const current = enabled.findIndex((item) => item.id === focused);
         if (current === -1) return;
+
+        if (manualActivation && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            onChange(focused);
+
+            return;
+        }
 
         let next = current;
         if (event.key === 'ArrowRight') next = (current + 1) % enabled.length;
@@ -41,8 +76,8 @@ export function Tabs({ items, value, onChange, className }: TabsProps) {
         const target = enabled[next];
         if (!target) return;
 
-        onChange(target.id);
-        listRef.current?.querySelector<HTMLButtonElement>(`#${CSS.escape(`${baseId}-${target.id}`)}`)?.focus();
+        if (!manualActivation) onChange(target.id);
+        focus(target.id);
     }
 
     const active = items.find((item) => item.id === value);
@@ -53,7 +88,10 @@ export function Tabs({ items, value, onChange, className }: TabsProps) {
                 ref={listRef}
                 role="tablist"
                 onKeyDown={onKeyDown}
-                className="flex items-center gap-6 border-b border-subtle"
+                className={cn(
+                    'flex items-center gap-6 border-b border-subtle',
+                    scrollable && 'max-w-full overflow-x-auto',
+                )}
             >
                 {items.map((item) => {
                     const selected = item.id === value;
@@ -66,11 +104,14 @@ export function Tabs({ items, value, onChange, className }: TabsProps) {
                             role="tab"
                             aria-selected={selected}
                             aria-controls={`${baseId}-${item.id}-panel`}
-                            tabIndex={selected ? 0 : -1}
+                            tabIndex={item.id === focused ? 0 : -1}
                             disabled={item.disabled}
-                            onClick={() => onChange(item.id)}
+                            onClick={() => {
+                                focus(item.id);
+                                onChange(item.id);
+                            }}
                             className={cn(
-                                'relative -mb-px flex items-center gap-2 border-b-2 pb-3 pt-2',
+                                'relative -mb-px flex shrink-0 items-center gap-2 border-b-2 pb-3 pt-2',
                                 'font-sora text-base font-medium transition-colors duration-fast ease-standard',
                                 'disabled:pointer-events-none disabled:opacity-50',
                                 selected

@@ -12,10 +12,13 @@ use App\Domain\Projects\Actions\ArchiveProject;
 use App\Domain\Projects\Actions\CreateProjectFromWizard;
 use App\Domain\Projects\Actions\DeleteProject;
 use App\Domain\Projects\Actions\FetchSitePreview;
+use App\Domain\Projects\Actions\GetProjectOverview;
 use App\Domain\Projects\Actions\ListProjects;
 use App\Domain\Projects\DTOs\ProjectData;
 use App\Domain\Projects\DTOs\ProjectFilters;
 use App\Domain\Projects\DTOs\ProjectWizardData;
+use App\Domain\Projects\Enums\ProjectStatus;
+use App\Domain\Projects\Enums\ProjectTab;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectDraft;
 use App\Http\Controllers\Controller;
@@ -124,12 +127,45 @@ class ProjectController extends Controller
             ->with('just_created', true);
     }
 
-    public function show(Project $project): Response
+    /**
+     * A project's own page. Six tabs, one layout, `?tab=` deciding which body
+     * renders — so a tab is a URL an advertiser can bookmark or send to a
+     * colleague rather than a state that exists only in their browser.
+     */
+    public function show(Request $request, Project $project, GetProjectOverview $overview): Response|RedirectResponse
     {
         $this->authorize('view', $project);
 
+        $tab = ProjectTab::tryFromRequest($request->input('tab'));
+
+        // Post management is the posts grid scoped to this project rather than
+        // a second copy of it living here. `?tab=posts` is still a real address
+        // — it just resolves to the grid, already filtered.
+        if ($tab === ProjectTab::Posts) {
+            return redirect()->to('/posts?'.http_build_query(['projects' => [$project->id]]));
+        }
+
+        $project->load('category:id,name');
+        $data = $overview->handle($project);
+
         return inertia('Projects/Show', [
-            'project' => $project->load(['category:id,name', 'folders:id,project_id,name']),
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'websiteUrl' => $project->website_url,
+                'category' => $project->category?->name,
+                'categoryId' => $project->category_id,
+                'color' => $project->color,
+                'status' => $project->status->value,
+                'isArchived' => $project->status === ProjectStatus::Archived,
+                // Already sanitised on write; rendered as HTML by the settings
+                // tab and stripped to a plain line by the folder rows.
+                'publisherTask' => $project->publisher_task,
+                'createdAt' => $project->created_at?->toIso8601String(),
+            ],
+            'stats' => $data['stats'],
+            'folders' => $data['folders'],
+            'tab' => $tab->value,
             'categories' => $this->categories(),
             'justCreated' => (bool) session('just_created', false),
         ]);

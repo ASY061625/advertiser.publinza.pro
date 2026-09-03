@@ -1,156 +1,107 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
-import { cn } from '@shared/lib/cn';
-import { AppShell } from '../../Layouts/AppShell';
-import { Button, Input, Select, Textarea } from '@shared/ui';
-import { date } from '@shared/lib/format';
-
-interface ProjectDetail {
-    id: number;
-    name: string;
-    website_url: string;
-    status: string;
-    publisher_task: string | null;
-    category_id: number | null;
-    category: { id: number; name: string } | null;
-    folders: { id: number; name: string }[];
-    created_at: string | null;
-}
+import { useForm } from '@inertiajs/react';
+import { Alert, Button, Input, Select, Textarea } from '@shared/ui';
+import type { ProjectDetail, ProjectFolderRow, ProjectOverviewStats, ProjectTabId } from '@shared/types/projects';
+import { ProjectLayout } from '../../Layouts/ProjectLayout';
+import { DealsPanel } from '../../Components/projects/general/DealsPanel';
+import { FinancePanel } from '../../Components/projects/general/FinancePanel';
+import { FirstDealCard } from '../../Components/projects/general/FirstDealCard';
+import { FoldersSection } from '../../Components/projects/general/FoldersSection';
 
 interface Props {
     project: ProjectDetail;
+    stats: ProjectOverviewStats;
+    folders: ProjectFolderRow[];
+    tab: ProjectTabId;
     categories: { id: number; name: string }[];
     /** Flashed by the create wizard, read once. */
     justCreated?: boolean;
 }
 
 /**
- * One project: General and Settings.
+ * One project. The header and tab bar are the layout's; this file is the body
+ * of whichever tab `?tab=` selected.
  *
- * Deliberately small. The full project screen — targeting, landing pages,
- * competitors, folders — is its own piece of work; this covers what /projects
- * links to so a row click and the Edit action both land somewhere real rather
- * than on a page that does not exist. Expect the tab strip to grow.
+ * General and Project settings are built. Statistics, History and Competitors
+ * are their own pieces of work and say so rather than rendering an empty panel
+ * that looks broken. Post management is the posts grid scoped to this project,
+ * so the controller redirects `?tab=posts` there instead of copying the grid.
  */
-export default function ProjectsShow({ project, categories, justCreated = false }: Props) {
-    const initialTab = new URLSearchParams(window.location.search).get('tab') === 'settings' ? 'settings' : 'general';
-    const [tab, setTab] = useState<'general' | 'settings'>(initialTab);
-
+export default function ProjectsShow({ project, stats, folders, tab, categories, justCreated = false }: Props) {
     return (
-        <AppShell title="Projects" crumbs={[{ label: 'My projects', href: '/projects' }, { label: project.name }]}>
-            <Head title={project.name} />
-
-            <header className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h1 className="font-sora text-xl font-semibold text-ink-900">{project.name}</h1>
-                    <a
-                        href={project.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 inline-block text-sm text-ink-500 hover:text-brand hover:underline"
-                    >
-                        {project.website_url.replace(/^https?:\/\//, '')}
-                    </a>
-                </div>
-
-                <Link href={`/posts?projects[]=${project.id}`}>
-                    <Button variant="secondary">See posts</Button>
-                </Link>
-            </header>
-
-            <div role="tablist" className="mt-5 flex gap-1 border-b border-subtle">
-                {(
-                    [
-                        ['general', 'General'],
-                        ['settings', 'Settings'],
-                    ] as const
-                ).map(([id, label]) => (
-                    <button
-                        key={id}
-                        type="button"
-                        role="tab"
-                        aria-selected={tab === id}
-                        onClick={() => setTab(id)}
-                        className={cn(
-                            'border-b-2 px-3 pb-2.5 pt-2 text-base font-medium transition-colors duration-fast',
-                            tab === id
-                                ? 'border-brand text-brand'
-                                : 'border-transparent text-ink-500 hover:text-ink-700',
-                        )}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
-
-            <div className="mt-5 max-w-xl">
-                {tab === 'general' ? (
-                    <>
-                        {justCreated && (
-                            <div className="mb-4 rounded-card border border-brand bg-brand-subtle p-4">
-                                <h2 className="font-sora text-md font-semibold text-ink-900">
-                                    {project.name} is ready.
-                                </h2>
-                                <p className="mt-1 text-sm text-ink-700">
-                                    Next: pick the sites you want to be published on. Every one in the catalog is a site
-                                    we own and run, so a placement you order goes live.
-                                </p>
-                                <Link href="/catalog" className="mt-3 inline-block">
-                                    <Button>Find a website</Button>
-                                </Link>
-                            </div>
-                        )}
-
-                        <dl className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-4 gap-y-3 rounded-card border border-subtle bg-card p-5 text-sm shadow-card">
-                            {(
-                                [
-                                    ['Status', project.status === 'archived' ? 'Archived' : 'Active'],
-                                    ['Category', project.category?.name ?? '—'],
-                                    ['Folders', project.folders.map((f) => f.name).join(', ') || '—'],
-                                    ['Created', project.created_at ? date(project.created_at) : '—'],
-                                ] as [string, string][]
-                            ).map(([label, value]) => (
-                                <div key={label} className="contents">
-                                    <dt className="text-ink-500">{label}</dt>
-                                    <dd className="whitespace-pre-wrap text-ink-900">{value}</dd>
-                                </div>
-                            ))}
-
-                            <div className="contents">
-                                <dt className="text-ink-500">Notes for writers</dt>
-                                <dd className="min-w-0 text-ink-900">
-                                    {project.publisher_task ? (
-                                        // Authored in the wizard's editor and put
-                                        // through HtmlSanitizer before it was
-                                        // stored; see ProjectWizardData.
-                                        <div
-                                            className="prose-publinza max-w-none"
-                                            dangerouslySetInnerHTML={{ __html: project.publisher_task }}
-                                        />
-                                    ) : (
-                                        '—'
-                                    )}
-                                </dd>
-                            </div>
-                        </dl>
-                    </>
-                ) : (
-                    <SettingsForm project={project} categories={categories} />
-                )}
-            </div>
-        </AppShell>
+        <ProjectLayout project={project} tab={tab} postMix={stats.posts}>
+            {tab === 'settings' ? (
+                <SettingsForm project={project} categories={categories} />
+            ) : tab === 'general' ? (
+                <General project={project} stats={stats} folders={folders} justCreated={justCreated} />
+            ) : (
+                <NotBuiltYet tab={tab} />
+            )}
+        </ProjectLayout>
     );
 }
 
-function SettingsForm({ project, categories }: Props) {
+function General({
+    project,
+    stats,
+    folders,
+    justCreated,
+}: {
+    project: ProjectDetail;
+    stats: ProjectOverviewStats;
+    folders: ProjectFolderRow[];
+    justCreated: boolean;
+}) {
+    return (
+        <div className="flex flex-col gap-5">
+            {justCreated && (
+                <Alert tone="success" title={`${project.name} is ready.`}>
+                    Every site in the catalog is one we own and run, so a placement you order goes live.
+                </Alert>
+            )}
+
+            {stats.posts.total === 0 && <FirstDealCard projectId={project.id} />}
+
+            {/* 7/5 on desktop: Deals carries four tiles and a bar and needs the
+                room; Finance is three rows of text and does not. */}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+                <div className="lg:col-span-7">
+                    <DealsPanel projectId={project.id} mix={stats.posts} />
+                </div>
+
+                <div className="lg:col-span-5">
+                    <FinancePanel stats={stats} />
+                </div>
+            </div>
+
+            <FoldersSection projectId={project.id} folders={folders} readOnly={project.isArchived} />
+        </div>
+    );
+}
+
+const COMING: Record<string, string> = {
+    statistics: 'Traffic, rankings and link health for every placement on this project, over time.',
+    history: 'Every change to this project and its posts, with who made it and when.',
+    competitors: 'The sites ranking against yours, and where they are being published.',
+};
+
+function NotBuiltYet({ tab }: { tab: ProjectTabId }) {
+    return (
+        <div className="rounded-card border border-subtle bg-card p-8 text-center shadow-card">
+            <p className="text-base font-medium text-ink-900">Not here yet.</p>
+            <p className="mx-auto mt-1 max-w-prose text-sm text-ink-500">{COMING[tab]}</p>
+        </div>
+    );
+}
+
+function SettingsForm({ project, categories }: { project: ProjectDetail; categories: { id: number; name: string }[] }) {
     const form = useForm({
         name: project.name,
-        website_url: project.website_url,
-        category_id: project.category_id === null ? '' : String(project.category_id),
-        publisher_task: project.publisher_task ?? '',
+        website_url: project.websiteUrl,
+        category_id: project.categoryId === null ? '' : String(project.categoryId),
+        publisher_task: project.publisherTask ?? '',
     });
 
-    const archived = project.status === 'archived';
+    const archived = project.isArchived;
 
     return (
         <form
@@ -158,7 +109,7 @@ function SettingsForm({ project, categories }: Props) {
                 event.preventDefault();
                 form.put(`/projects/${project.id}`, { preserveScroll: true });
             }}
-            className="flex flex-col gap-4 rounded-card border border-subtle bg-card p-5 shadow-card"
+            className="flex max-w-xl flex-col gap-4 rounded-card border border-subtle bg-card p-5 shadow-card"
         >
             {archived && (
                 <p className="rounded-card bg-sunken px-3 py-2 text-sm text-ink-700">
@@ -204,6 +155,7 @@ function SettingsForm({ project, categories }: Props) {
                 error={form.errors.publisher_task}
                 disabled={archived}
                 rows={4}
+                hint="The default brief. A folder can override it for the pages inside it."
             />
 
             <div className="flex justify-end border-t border-subtle pt-4">

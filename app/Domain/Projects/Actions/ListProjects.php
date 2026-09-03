@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Projects\Actions;
 
-use App\Domain\Posts\Enums\PostStatus;
-use App\Domain\Posts\Models\Post;
 use App\Domain\Projects\DTOs\ProjectFilters;
 use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Models\Project;
+use App\Domain\Projects\Support\ProjectStats;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -30,9 +28,6 @@ use Illuminate\Support\Collection;
  */
 final class ListProjects
 {
-    /** Statuses whose money has left the wallet. Matches the dashboard. */
-    private const SPENT = [PostStatus::Posted, PostStatus::Completed];
-
     /**
      * @return Collection<int, array<string, mixed>>
      */
@@ -44,7 +39,7 @@ final class ListProjects
             return collect();
         }
 
-        $stats = $this->statsFor($projects->pluck('id')->all());
+        $stats = ProjectStats::forProjects($projects->pluck('id')->all());
 
         $rows = $projects->map(fn (Project $project): array => $this->row(
             $project,
@@ -98,106 +93,13 @@ final class ListProjects
     }
 
     /**
-     * Every per-project figure, in one grouped query.
-     *
-     * The conditional aggregates are written as SUM(CASE WHEN …) rather than
-     * with a database-specific helper, because the test suite runs on SQLite
-     * and production runs on MySQL and this has to mean the same thing on both.
-     *
-     * @param  list<int>  $projectIds
-     * @return array<int, array<string, int>>
-     */
-    private function statsFor(array $projectIds): array
-    {
-        $now = Carbon::now();
-        $bindings = [
-            'monthStart' => $now->copy()->startOfMonth(),
-            'monthEnd' => $now->copy()->endOfMonth(),
-            'lastMonthStart' => $now->copy()->subMonthNoOverflow()->startOfMonth(),
-            'lastMonthEnd' => $now->copy()->subMonthNoOverflow()->endOfMonth(),
-            'quarterStart' => $now->copy()->startOfQuarter(),
-            'quarterEnd' => $now->copy()->endOfQuarter(),
-        ];
-
-        $spent = $this->inList(self::SPENT);
-        $held = $this->inList(array_filter(
-            PostStatus::cases(),
-            static fn (PostStatus $status): bool => $status->holdsFrozenFunds(),
-        ));
-
-        $rows = Post::query()
-            ->whereIn('project_id', $projectIds)
-            ->groupBy('project_id')
-            ->selectRaw('project_id')
-            ->selectRaw('count(*) as total')
-            ->selectRaw($this->countWhere("status = 'new'").' as bucket_new')
-            ->selectRaw($this->countWhere("status in ('in_progress', 'content_review')").' as bucket_progress')
-            // Live and settled: verified, or never given a verification window.
-            ->selectRaw($this->countWhere(
-                "status = 'completed' or (status = 'posted' and (frozen_until is null or frozen_until <= ?))"
-            ).' as bucket_posted', [$now])
-            // Live but still inside the 3-day window, so the money is held.
-            ->selectRaw($this->countWhere(
-                "status = 'posted' and frozen_until is not null and frozen_until > ?"
-            ).' as bucket_frozen', [$now])
-            ->selectRaw($this->sumWhere('price_cents', "status in {$held}").' as frozen_cents')
-            // Average is over completed posts only: a post that is still being
-            // written has a quoted price, not a price anyone has paid.
-            ->selectRaw($this->sumWhere('price_cents', "status = 'completed'").' as completed_cents')
-            ->selectRaw($this->countWhere("status = 'completed'").' as completed_count')
-            ->selectRaw($this->sumWhere(
-                'price_cents',
-                "status in {$spent} and published_at between ? and ?"
-            ).' as spent_month', [$bindings['monthStart'], $bindings['monthEnd']])
-            ->selectRaw($this->sumWhere(
-                'price_cents',
-                "status in {$spent} and published_at between ? and ?"
-            ).' as spent_last_month', [$bindings['lastMonthStart'], $bindings['lastMonthEnd']])
-            ->selectRaw($this->sumWhere(
-                'price_cents',
-                "status in {$spent} and published_at between ? and ?"
-            ).' as spent_quarter', [$bindings['quarterStart'], $bindings['quarterEnd']])
-            ->get();
-
-        $out = [];
-
-        foreach ($rows as $row) {
-            $out[(int) $row->getAttribute('project_id')] = array_map(
-                static fn (mixed $value): int => (int) $value,
-                [
-                    'total' => $row->getAttribute('total'),
-                    'new' => $row->getAttribute('bucket_new'),
-                    'progress' => $row->getAttribute('bucket_progress'),
-                    'posted' => $row->getAttribute('bucket_posted'),
-                    'frozen' => $row->getAttribute('bucket_frozen'),
-                    'frozenCents' => $row->getAttribute('frozen_cents'),
-                    'completedCents' => $row->getAttribute('completed_cents'),
-                    'completedCount' => $row->getAttribute('completed_count'),
-                    'spentMonth' => $row->getAttribute('spent_month'),
-                    'spentLastMonth' => $row->getAttribute('spent_last_month'),
-                    'spentQuarter' => $row->getAttribute('spent_quarter'),
-                ],
-            );
-        }
-
-        return $out;
-    }
-
-    /**
      * @param  array<string, int>  $stats
      * @return array<string, mixed>
      */
     private function row(Project $project, array $stats): array
     {
-        $total = $stats['total'] ?? 0;
-        $new = $stats['new'] ?? 0;
-        $progress = $stats['progress'] ?? 0;
-        $posted = $stats['posted'] ?? 0;
-        $frozen = $stats['frozen'] ?? 0;
-
         $spentMonth = $stats['spentMonth'] ?? 0;
         $spentLastMonth = $stats['spentLastMonth'] ?? 0;
-        $completedCount = $stats['completedCount'] ?? 0;
 
         return [
             'id' => $project->id,
@@ -210,22 +112,12 @@ final class ListProjects
             'isArchived' => $project->status === ProjectStatus::Archived,
             'createdAt' => $project->created_at?->toIso8601String(),
 
-            'posts' => [
-                'total' => $total,
-                'new' => $new,
-                'progress' => $progress,
-                'posted' => $posted,
-                'frozen' => $frozen,
-                // Draft, rejected, cancelled and refunded. Carried so the bar
-                // adds up to the total printed above it — a stacked bar whose
-                // segments do not sum to the number beside them is a lie.
-                'other' => max(0, $total - $new - $progress - $posted - $frozen),
-            ],
+            // Derived in ProjectStats so this page and the project's own page
+            // cannot disagree about the same project.
+            'posts' => ProjectStats::mix($stats),
 
             'frozenCents' => $stats['frozenCents'] ?? 0,
-            'averageCents' => $completedCount === 0
-                ? null
-                : intdiv($stats['completedCents'] ?? 0, $completedCount),
+            'averageCents' => ProjectStats::averageCents($stats),
             'spentMonthCents' => $spentMonth,
             'spentQuarterCents' => $stats['spentQuarter'] ?? 0,
 
@@ -258,26 +150,5 @@ final class ListProjects
         // the query below orders by id, so projects on identical spend keep a
         // deterministic order between requests.
         return $filters->direction === 'asc' ? $rows->sortBy($key) : $rows->sortByDesc($key);
-    }
-
-    /**
-     * @param  list<PostStatus>  $statuses
-     */
-    private function inList(array $statuses): string
-    {
-        return '('.implode(', ', array_map(
-            static fn (PostStatus $status): string => "'".$status->value."'",
-            array_values($statuses),
-        )).')';
-    }
-
-    private function countWhere(string $condition): string
-    {
-        return "sum(case when {$condition} then 1 else 0 end)";
-    }
-
-    private function sumWhere(string $column, string $condition): string
-    {
-        return "coalesce(sum(case when {$condition} then {$column} else 0 end), 0)";
     }
 }

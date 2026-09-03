@@ -577,6 +577,74 @@ rows — could not show a validation message. Both now route through `Field`, wh
 
 ---
 
+## Project page — `/projects/{id}`
+
+Six tabs over one project. `?tab=` decides which body renders, validated server-side by
+`ProjectTab` so an unrecognised value lands on General rather than an empty panel.
+
+```
+ProjectLayout.tsx          breadcrumb, identity, actions, tab bar — built once
+  Projects/Show.tsx        the body of whichever tab is selected
+    general/DealsPanel     four tiles + stacked bar + legend
+    general/FinancePanel   spent / frozen / average + split bar
+    general/FoldersSection folder rows, add, edit, delete
+    general/FirstDealCard  shown until the project has a post
+  Projects/Folders/Edit    add or edit one folder
+```
+
+### One aggregate, two screens
+
+`ProjectStats` is the per-project post mix and money, in one grouped query. Both the
+projects list and a project's own page read it. The list showing 34 posts and the page
+showing 31 is a support ticket, and it is exactly what happens when two screens each write
+their own version of "how many are in progress". A test asserts the two payloads match.
+
+`GetProjectOverview` adds the folders: three grouped queries for landing pages, posts, and
+non-terminal posts — not a count per folder, because a project with twenty folders should
+not cost forty queries to render.
+
+The one figure that deliberately differs is spend. The list's is windowed to the month;
+the page's is all-time. The labels say which is which.
+
+### Post management is the posts grid
+
+Rather than a second copy of the grid living here, `?tab=posts` redirects to
+`/posts?projects[]={id}`. The Deals tiles do the same with a status attached, so
+"In progress 9" opens exactly those nine — the tile's two statuses (`in_progress`,
+`content_review`) both travel, or the grid would show fewer posts than the tile promised.
+
+### Folders refuse to disappear quietly
+
+`DeleteFolder` blocks three cases and names each one: the project's only folder (every
+landing page has to live in one), a folder with non-terminal posts (a publisher would be
+left writing against a brief that no longer exists), and a folder still holding landing
+pages. The row disables its own Delete with the same reason in a tooltip — that is the
+courtesy; the action is the guard. Finished posts do not block it: `folder_id` is nulled
+rather than cascaded, so history stays readable.
+
+Folder briefs are sanitised on write, like the project's, and held to the same 3,000
+visible characters the editor counts — the limit is on what was typed, not on the markup
+wrapped around it.
+
+### Three bugs this screen surfaced
+
+**Every page's `useToast()` threw.** `ToastProvider` lived inside `AppShell`, and every
+page renders its own `<AppShell>` — so the provider was a *descendant* of the component
+calling the hook. `/posts` rendered a blank white page in the browser while its feature
+tests passed, because the tests assert on the Inertia payload and never mount React. The
+provider moved to `main.tsx`, above the page.
+
+**The tab bar dragged the page off the right of a phone.** `min-w-max` on the whole `Tabs`
+component sized the *panel* to the tab row's intrinsic width. `Tabs` gained `scrollable`,
+which puts the overflow on the row alone.
+
+**Arrow keys could not reach the last three tabs.** With WAI-ARIA's automatic activation,
+the first ArrowRight landed on Post management and navigated away. `Tabs` gained
+`manualActivation` — arrows move focus, Enter commits — which is what the pattern
+prescribes when activating a tab costs a page load.
+
+---
+
 ## Layout
 
 ```

@@ -16,6 +16,7 @@ use App\Http\Controllers\Advertiser\MessageController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\PostGridController;
 use App\Http\Controllers\Advertiser\ProjectController;
+use App\Http\Controllers\Advertiser\ProjectFolderController;
 use App\Http\Controllers\Advertiser\SearchController;
 use App\Http\Controllers\Advertiser\ShellController;
 use Illuminate\Support\Facades\Route;
@@ -137,6 +138,20 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::resource('projects', ProjectController::class)->except(['edit']);
     Route::post('/projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');
     Route::post('/projects/{project}/restore', [ProjectController::class, 'restore'])->name('projects.restore');
+
+    // Folders live under the project they belong to, in the URL and in the
+    // authorisation: every action checks the project, so a folder id from
+    // another account cannot be reached by guessing it.
+    Route::get('/projects/{project}/folders/create', [ProjectFolderController::class, 'create'])
+        ->name('projects.folders.create');
+    Route::post('/projects/{project}/folders', [ProjectFolderController::class, 'store'])
+        ->name('projects.folders.store');
+    Route::get('/projects/{project}/folders/{folder}/edit', [ProjectFolderController::class, 'edit'])
+        ->name('projects.folders.edit');
+    Route::put('/projects/{project}/folders/{folder}', [ProjectFolderController::class, 'update'])
+        ->name('projects.folders.update');
+    Route::delete('/projects/{project}/folders/{folder}', [ProjectFolderController::class, 'destroy'])
+        ->name('projects.folders.destroy');
 
     Route::get('/posts', [PostController::class, 'index'])->name('posts.index');
 
