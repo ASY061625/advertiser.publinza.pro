@@ -19,6 +19,10 @@ export interface PostRow {
     publishedAt: string | null;
     deadlineAt: string | null;
     publishedUrl: string | null;
+    /** Null until Publinza stores its own site marks; the card falls back to a glyph. */
+    favicon: string | null;
+    /** Unread by the advertiser — their own messages never count. */
+    hasUnread: boolean;
 }
 
 export interface NamedOption {

@@ -1,3 +1,6 @@
+import type { Paginated } from '@shared/types';
+import type { ColumnPreferences, PostFilterState, PostOptions, PostRow } from '@shared/types/posts';
+
 export interface ProjectPostMix {
     total: number;
     new: number;
@@ -107,4 +110,17 @@ export interface FolderEditorPage {
     url: string;
     /** Posts already pointing at this anchor/URL pair. Above zero, it stays. */
     usage: number;
+}
+
+/** The Post management tab's payload, built only when that tab is open. */
+export interface ProjectPostsGrid {
+    posts: Paginated<PostRow>;
+    tabCounts: Record<string, number>;
+    filters: PostFilterState;
+    hasAnyPosts: boolean;
+    isFiltering: boolean;
+    options: PostOptions;
+    columns: ColumnPreferences;
+    /** This project's folders, for the promoted Folder filter. */
+    folders: { id: number; name: string }[];
 }

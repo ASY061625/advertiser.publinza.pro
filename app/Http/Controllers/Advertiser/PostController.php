@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advertiser;
 
-use App\Domain\Catalog\Models\Country;
-use App\Domain\Catalog\Models\Language;
-use App\Domain\Catalog\Models\WebsiteCategory;
 use App\Domain\Posts\Actions\ApproveDraft;
 use App\Domain\Posts\Actions\BulkPostActions;
 use App\Domain\Posts\Actions\CancelPost;
@@ -15,10 +12,8 @@ use App\Domain\Posts\Actions\ExportPostsCsv;
 use App\Domain\Posts\Actions\GetPostDetail;
 use App\Domain\Posts\Actions\ListPosts;
 use App\Domain\Posts\DTOs\PostFilters;
-use App\Domain\Posts\Enums\PostStatus;
-use App\Domain\Posts\Enums\PostTab;
 use App\Domain\Posts\Models\Post;
-use App\Domain\Projects\Models\Project;
+use App\Domain\Posts\Support\PostGridPayload;
 use App\Http\Controllers\Controller;
 use App\Support\PostGridPreferences;
 use Illuminate\Http\JsonResponse;
@@ -36,7 +31,7 @@ class PostController extends Controller
         $filters = PostFilters::fromRequest($request);
 
         return inertia('Posts/Index', [
-            'posts' => $list->paginate($user, $filters)->through($this->row(...)),
+            'posts' => $list->paginate($user, $filters)->through(PostGridPayload::row(...)),
             'tabCounts' => $list->tabCounts($user, $filters),
             'filters' => $filters->toQuery(),
 
@@ -46,7 +41,7 @@ class PostController extends Controller
             'hasAnyPosts' => Post::query()->where('user_id', $user->id)->exists(),
             'isFiltering' => $filters->isFiltering(),
 
-            'options' => $this->options($user),
+            'options' => PostGridPayload::options($user),
             'columns' => PostGridPreferences::for($user),
             'savedViews' => $user->savedViews()->where('surface', 'posts')
                 ->get(['id', 'name', 'query'])->all(),
@@ -157,78 +152,6 @@ class PostController extends Controller
         $cancelPost->handle($post, $request->string('reason')->value());
 
         return back()->with('success', 'Cancelled');
-    }
-
-    /**
-     * The grid row. Deliberately flat and deliberately small: this is sent 100
-     * times per page, so it carries what the columns render and nothing else.
-     *
-     * @return array<string, mixed>
-     */
-    private function row(Post $post): array
-    {
-        return [
-            'id' => $post->id,
-            'domain' => $post->website?->domain ?? '',
-            'dr' => $post->website?->latestMetric?->ahrefs_dr,
-            'traffic' => $post->website?->latestMetric?->monthly_traffic,
-            'project' => $post->project?->name,
-            'projectId' => $post->project_id,
-            'folder' => $post->folder?->name,
-            'anchorText' => $post->anchor_text,
-            'targetUrl' => $post->target_url,
-            'status' => $post->status->value,
-            'statusLabel' => $post->status->label(),
-            'badge' => $post->status->badgeKey(),
-            'canCancel' => $post->status->isPrePosted(),
-            'priceCents' => $post->price_cents,
-            'createdAt' => $post->created_at?->toIso8601String(),
-            'publishedAt' => $post->published_at?->toIso8601String(),
-            'deadlineAt' => $post->deadline_at?->toIso8601String(),
-            'publishedUrl' => $post->published_url,
-        ];
-    }
-
-    /**
-     * The filter bar's option lists.
-     *
-     * Projects and folders are the advertiser's own. Categories, countries and
-     * languages are narrowed to those that actually appear on their posts —
-     * a filter that can only ever return nothing is noise.
-     *
-     * @return array<string, mixed>
-     */
-    private function options(mixed $user): array
-    {
-        $websiteIds = Post::query()->where('user_id', $user->id)->select('website_id');
-
-        $used = fn (string $column, string $model) => $model::query()
-            ->whereIn('id', fn ($q) => $q->select($column)->from('websites')->whereIn('id', $websiteIds))
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->all();
-
-        return [
-            'projects' => Project::query()
-                ->where('user_id', $user->id)
-                ->with('folders:id,project_id,name')
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->all(),
-            'statuses' => array_map(static fn (PostStatus $s): array => [
-                'value' => $s->value,
-                'label' => $s->label(),
-                'badge' => $s->badgeKey(),
-            ], PostStatus::cases()),
-            'tabs' => array_map(static fn (PostTab $t): array => [
-                'value' => $t->value,
-                'label' => $t->label(),
-                'badge' => $t->badgeKey(),
-            ], PostTab::cases()),
-            'categories' => $used('category_id', WebsiteCategory::class),
-            'countries' => $used('country_id', Country::class),
-            'languages' => $used('primary_language_id', Language::class),
-        ];
     }
 
     /**

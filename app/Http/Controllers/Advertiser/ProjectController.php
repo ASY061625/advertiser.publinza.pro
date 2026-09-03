@@ -8,6 +8,10 @@ use App\Domain\Catalog\Models\Country;
 use App\Domain\Catalog\Models\Language;
 use App\Domain\Catalog\Models\SensitiveTopic;
 use App\Domain\Catalog\Models\WebsiteCategory;
+use App\Domain\Posts\Actions\ListPosts;
+use App\Domain\Posts\DTOs\PostFilters;
+use App\Domain\Posts\Models\Post;
+use App\Domain\Posts\Support\PostGridPayload;
 use App\Domain\Projects\Actions\ArchiveProject;
 use App\Domain\Projects\Actions\CreateProjectFromWizard;
 use App\Domain\Projects\Actions\DeleteProject;
@@ -25,6 +29,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Advertiser\StoreProjectWizardRequest;
 use App\Http\Requests\Advertiser\UpdateProjectRequest;
 use App\Support\GridPreferences;
+use App\Support\PostGridPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -132,23 +137,21 @@ class ProjectController extends Controller
      * renders — so a tab is a URL an advertiser can bookmark or send to a
      * colleague rather than a state that exists only in their browser.
      */
-    public function show(Request $request, Project $project, GetProjectOverview $overview): Response|RedirectResponse
+    public function show(Request $request, Project $project, GetProjectOverview $overview): Response
     {
         $this->authorize('view', $project);
 
         $tab = ProjectTab::tryFromRequest($request->input('tab'));
 
-        // Post management is the posts grid scoped to this project rather than
-        // a second copy of it living here. `?tab=posts` is still a real address
-        // — it just resolves to the grid, already filtered.
-        if ($tab === ProjectTab::Posts) {
-            return redirect()->to('/posts?'.http_build_query(['projects' => [$project->id]]));
-        }
-
         $project->load('category:id,name');
         $data = $overview->handle($project);
 
         return inertia('Projects/Show', [
+            // Only built for the tab that renders it. Every other tab pays
+            // nothing for a grid it is not showing.
+            'grid' => $tab === ProjectTab::Posts
+                ? $this->postsGrid($request, $project, app(ListPosts::class))
+                : null,
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -222,6 +225,42 @@ class ProjectController extends Controller
         }
 
         return to_route('projects.index')->with('success', "“{$name}” deleted.");
+    }
+
+    /**
+     * The Post management tab: the /posts grid, locked to this project.
+     *
+     * Same action, same row shape, same option lists — the component is the
+     * one /posts renders, so anything that diverged here would be a second
+     * grid pretending to be the first. What differs is the scope, which is
+     * applied to the query rather than taken from the request, and the status
+     * tab's key: this page already spends `tab` on which tab of the project is
+     * open, so the grid's own tab travels as `posts_tab`.
+     *
+     * @return array<string, mixed>
+     */
+    private function postsGrid(Request $request, Project $project, ListPosts $list): array
+    {
+        $user = $request->user();
+        $filters = PostFilters::fromRequest($request, 'posts_tab')->forProject($project->id);
+
+        return [
+            'posts' => $list->paginate($user, $filters)->through(PostGridPayload::row(...)),
+            'tabCounts' => $list->tabCounts($user, $filters),
+            'filters' => $filters->toQuery(),
+
+            // "This project has no posts" and "nothing matches these filters"
+            // are different situations with different things to do about them.
+            'hasAnyPosts' => Post::query()
+                ->where('user_id', $user->id)
+                ->where('project_id', $project->id)
+                ->exists(),
+            'isFiltering' => $filters->isFiltering(),
+
+            'options' => PostGridPayload::options($user, $project),
+            'columns' => PostGridPreferences::for($user),
+            'folders' => $project->folders()->orderBy('sort_order')->orderBy('id')->get(['id', 'name'])->all(),
+        ];
     }
 
     /**

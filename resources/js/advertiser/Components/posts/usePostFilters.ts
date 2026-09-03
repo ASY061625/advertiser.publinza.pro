@@ -13,6 +13,24 @@ export function asPayload(value: object): RequestPayload {
     return { ...value };
 }
 
+/** Where a grid's filter changes navigate, and under which keys. */
+export interface FilterTarget {
+    /** Where a filter change navigates. */
+    path: string;
+    /** Params that always travel with it — a project page's own `?tab=`. */
+    fixed?: Record<string, string>;
+    /**
+     * The query-string key the status tab uses. A project page already spends
+     * `tab` on which tab of the project is open, so its grid sends `posts_tab`
+     * while still holding the value under `tab` in state.
+     */
+    tabKey?: string;
+    /** Props the visit re-fetches. Everything else on the page is left alone. */
+    only?: string[];
+}
+
+const DEFAULT_TARGET: FilterTarget = { path: '/posts' };
+
 /**
  * The filter state, with the URL as the single source of truth.
  *
@@ -23,24 +41,28 @@ export function asPayload(value: object): RequestPayload {
  * — the search box, which needs to feel instant — and reads everything else
  * back off the server's own echo of the filters.
  */
-export function usePostFilters(initial: PostFilterState) {
+export function usePostFilters(initial: PostFilterState, target: FilterTarget = DEFAULT_TARGET) {
     const [filters, setFilters] = useState<PostFilterState>(initial);
+    const { path, fixed, tabKey = 'tab', only } = target;
 
     // The server echoes the filters it actually applied. Adopting them keeps
     // the UI honest about what is on screen — including a value it clamped or
     // discarded, which is exactly when the two would otherwise disagree.
     useEffect(() => setFilters(initial), [initial]);
 
-    const visit = useCallback((next: PostFilterState, options: { replace?: boolean } = {}) => {
-        setFilters(next);
+    const visit = useCallback(
+        (next: PostFilterState, options: { replace?: boolean } = {}) => {
+            setFilters(next);
 
-        router.get('/posts', asPayload(next), {
-            preserveState: true,
-            preserveScroll: true,
-            replace: options.replace ?? false,
-            only: ['posts', 'tabCounts', 'filters', 'isFiltering'],
-        });
-    }, []);
+            router.get(path, toRequest(next, tabKey, fixed), {
+                preserveState: true,
+                preserveScroll: true,
+                replace: options.replace ?? false,
+                only: only ?? ['posts', 'tabCounts', 'filters', 'isFiltering'],
+            });
+        },
+        [path, tabKey, fixed, only],
+    );
 
     /** Any filter change resets to page one: page 7 of a new filter is nowhere. */
     const set = useCallback(
@@ -70,7 +92,29 @@ export function usePostFilters(initial: PostFilterState) {
         visit({ ...(sort && { sort }), ...(direction && { direction }), ...(perPage && { per_page: perPage }) });
     }, [filters, visit]);
 
-    return { filters, set, clearAll, visit };
+    return { filters, set, clearAll, visit, toRequest: toRequestFor(tabKey, fixed) };
+}
+
+/**
+ * Filter state as request params: the status tab renamed to whatever key this
+ * surface uses, and the surface's fixed params merged in.
+ */
+export function toRequest(
+    filters: PostFilterState & { page?: number },
+    tabKey = 'tab',
+    fixed?: Record<string, string>,
+): RequestPayload {
+    const { tab, ...rest } = filters;
+
+    return {
+        ...rest,
+        ...(tab !== undefined && tab !== 'all' ? { [tabKey]: tab } : {}),
+        ...(fixed ?? {}),
+    };
+}
+
+function toRequestFor(tabKey: string, fixed?: Record<string, string>) {
+    return (filters: PostFilterState): RequestPayload => toRequest(filters, tabKey, fixed);
 }
 
 /**

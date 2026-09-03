@@ -1,6 +1,15 @@
-import { useForm } from '@inertiajs/react';
-import { Alert, Button, Input, Select, Textarea } from '@shared/ui';
-import type { ProjectDetail, ProjectFolderRow, ProjectOverviewStats, ProjectTabId } from '@shared/types/projects';
+import { Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
+import { Alert, Button, EmptyState, Input, PlusIcon, Select, Textarea } from '@shared/ui';
+import type {
+    ProjectDetail,
+    ProjectFolderRow,
+    ProjectOverviewStats,
+    ProjectPostsGrid,
+    ProjectTabId,
+} from '@shared/types/projects';
+import { PostsGrid, type PostsView } from '../../Components/posts/PostsGrid';
+import { ProjectSummaryStrip } from '../../Components/projects/general/ProjectSummaryStrip';
 import { ProjectLayout } from '../../Layouts/ProjectLayout';
 import { DealsPanel } from '../../Components/projects/general/DealsPanel';
 import { FinancePanel } from '../../Components/projects/general/FinancePanel';
@@ -17,6 +26,8 @@ interface Props {
     justCreated?: boolean;
     /** Flashed by the folder editor: the folder it just saved. */
     folderSaved?: number | null;
+    /** Only sent for the Post management tab. */
+    grid?: ProjectPostsGrid | null;
 }
 
 /**
@@ -36,10 +47,13 @@ export default function ProjectsShow({
     categories,
     justCreated = false,
     folderSaved = null,
+    grid = null,
 }: Props) {
     return (
         <ProjectLayout project={project} tab={tab} postMix={stats.posts}>
-            {tab === 'settings' ? (
+            {tab === 'posts' && grid !== null ? (
+                <PostManagement project={project} stats={stats} grid={grid} />
+            ) : tab === 'settings' ? (
                 <SettingsForm project={project} categories={categories} />
             ) : tab === 'general' ? (
                 <General
@@ -98,6 +112,80 @@ function General({
                 highlightId={folderSaved}
             />
         </div>
+    );
+}
+
+/**
+ * The posts grid, locked to this project.
+ *
+ * The same component /posts renders — not a copy of it — so the table, the
+ * drawer, the filters and the bulk actions are the ones an advertiser already
+ * knows. What this adds is the summary strip and the Table/Board toggle; what
+ * it takes away is the Project column, the Project filter and saved views,
+ * none of which mean anything inside a single project.
+ */
+function PostManagement({
+    project,
+    stats,
+    grid,
+}: {
+    project: ProjectDetail;
+    stats: ProjectOverviewStats;
+    grid: ProjectPostsGrid;
+}) {
+    // Not persisted: which shape you want to read a project's work in is a
+    // choice about this minute, and a remembered board is a surprise on the
+    // next visit. The table is where everyone starts.
+    const [view, setView] = useState<PostsView>('table');
+
+    return (
+        <PostsGrid
+            posts={grid.posts}
+            tabCounts={grid.tabCounts}
+            filters={grid.filters}
+            isFiltering={grid.isFiltering}
+            options={grid.options}
+            columns={grid.columns}
+            path={`/projects/${project.id}`}
+            // Carried on every filter change, or the grid would navigate itself
+            // off its own tab and back to General.
+            fixedQuery={{ tab: 'posts' }}
+            // This page already spends `tab` on which tab of the project is
+            // open, so the grid's status tab travels under its own key.
+            tabKey="posts_tab"
+            // This page nests the whole grid under one prop, so that is what a
+            // filter change asks for. Asking for `posts` here would name a prop
+            // /posts has and this page does not, and the grid would silently
+            // keep showing the last result.
+            only={['grid']}
+            scope={{ projectId: project.id, folders: grid.folders }}
+            summary={<ProjectSummaryStrip stats={stats} />}
+            view={view}
+            onViewChange={setView}
+            emptyState={
+                <div className="flex flex-col gap-5">
+                    <ProjectSummaryStrip stats={stats} />
+
+                    <EmptyState
+                        illustration={<PlusIcon size={26} />}
+                        direction="Time to add your first post!"
+                        body="Choose a site in the catalog, add your anchor and link, and we’ll handle the placement."
+                        action={
+                            <span className="flex flex-wrap items-center justify-center gap-2">
+                                <Link href={`/catalog?project=${project.id}&intent=add-post`}>
+                                    <Button size="lg">Add post</Button>
+                                </Link>
+                                <Link href={`/catalog?project=${project.id}`}>
+                                    <Button size="lg" variant="secondary">
+                                        Find a website
+                                    </Button>
+                                </Link>
+                            </span>
+                        }
+                    />
+                </div>
+            }
+        />
     );
 }
 

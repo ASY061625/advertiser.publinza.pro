@@ -52,15 +52,37 @@ it('deep links every built tab', function (): void {
     }
 });
 
-it('sends post management to the posts grid already filtered to the project', function (): void {
+it('renders the posts grid in the Post management tab, scoped to the project', function (): void {
+    $user = generalUser();
+    $mine = generalProject($user);
+    $theirs = Project::factory()->for($user, 'owner')->create(['name' => 'Other project']);
+
+    Post::factory()->count(2)->for($user, 'advertiser')->for($mine)->status(PostStatus::New)->create();
+    Post::factory()->count(3)->for($user, 'advertiser')->for($theirs)->status(PostStatus::New)->create();
+
+    $this->actingAs($user)
+        ->get(advertiserUrl("/projects/{$mine->id}?tab=posts"))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Projects/Show')
+            ->where('tab', 'posts')
+            // This project's posts only, whatever the other project holds.
+            ->where('grid.posts.total', 2)
+            ->where('grid.tabCounts.all', 2)
+            ->where('grid.hasAnyPosts', true)
+            ->where('grid.isFiltering', false)
+            ->etc());
+});
+
+it('does not build the posts grid for the tabs that do not render it', function (): void {
     $user = generalUser();
     $project = generalProject($user);
 
-    // Post management is the posts grid scoped to this project, not a second
-    // copy of it living on the project page.
-    $this->actingAs($user)
-        ->get(advertiserUrl("/projects/{$project->id}?tab=posts"))
-        ->assertRedirect(advertiserUrl('/posts?projects%5B0%5D='.$project->id));
+    foreach (['general', 'settings', 'statistics'] as $tab) {
+        $this->actingAs($user)
+            ->get(advertiserUrl("/projects/{$project->id}?tab={$tab}"))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('grid', null)->etc());
+    }
 });
 
 it('counts the post mix into the four tiles', function (): void {

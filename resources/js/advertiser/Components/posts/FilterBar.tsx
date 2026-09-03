@@ -8,6 +8,13 @@ interface Props {
     filters: PostFilterState;
     options: PostOptions;
     onChange: (patch: Partial<PostFilterState>) => void;
+    /**
+     * Set when the grid is locked to one project. The Projects filter goes —
+     * a control that can only ever mean "this project" is furniture — and
+     * Folder takes its place in the visible row, where it is now the useful
+     * way to narrow a single project's posts.
+     */
+    scopedFolders?: { id: number; name: string }[] | null;
 }
 
 const DEADLINES = [
@@ -32,15 +39,36 @@ const CONTENT_MODES = [
  * date carry most sessions, and putting the other thirteen beside them would
  * make the common case hunt through a wall of controls.
  */
-export function FilterBar({ filters, options, onChange }: Props) {
+export function FilterBar({ filters, options, onChange, scopedFolders = null }: Props) {
     // Open on arrival when an advanced filter is already set — otherwise a
     // shared link would show chips for filters whose controls are hidden.
-    const [advanced, setAdvanced] = useState(() => hasAdvanced(filters));
+    // Scoped, Folder lives in the visible row, so having one set is not a
+    // reason to unfold thirteen controls nobody asked for.
+    const [advanced, setAdvanced] = useState(() => hasAdvanced(filters, scopedFolders !== null));
 
     const [search, setSearch] = useDebouncedSearch(filters.q ?? '', (value) => onChange({ q: value || undefined }));
 
-    const folders = options.projects.flatMap((project) =>
-        project.folders.map((folder) => ({ value: String(folder.id), label: `${project.name} / ${folder.name}` })),
+    // Scoped, the folder names stand alone; unscoped they need their project
+    // in front of them, because two projects may both have a "General".
+    const folders =
+        scopedFolders !== null
+            ? scopedFolders.map((folder) => ({ value: String(folder.id), label: folder.name }))
+            : options.projects.flatMap((project) =>
+                  project.folders.map((folder) => ({
+                      value: String(folder.id),
+                      label: `${project.name} / ${folder.name}`,
+                  })),
+              );
+
+    const folderSelect = (
+        <Select
+            label="Folder"
+            hideLabel={scopedFolders !== null}
+            className={scopedFolders !== null ? 'w-52' : undefined}
+            value={filters.folder ? String(filters.folder) : ''}
+            onChange={(event) => onChange({ folder: Number(event.target.value) || undefined })}
+            options={[{ value: '', label: scopedFolders !== null ? 'All folders' : 'Any folder' }, ...folders]}
+        />
     );
 
     return (
@@ -58,15 +86,19 @@ export function FilterBar({ filters, options, onChange }: Props) {
                     />
                 </div>
 
-                <MultiSelect
-                    label="Projects"
-                    hideLabel
-                    placeholder="All projects"
-                    className="w-52"
-                    options={options.projects.map((p) => ({ value: String(p.id), label: p.name }))}
-                    value={(filters.projects ?? []).map(String)}
-                    onChange={(value) => onChange({ projects: value.map(Number) })}
-                />
+                {scopedFolders === null ? (
+                    <MultiSelect
+                        label="Projects"
+                        hideLabel
+                        placeholder="All projects"
+                        className="w-52"
+                        options={options.projects.map((p) => ({ value: String(p.id), label: p.name }))}
+                        value={(filters.projects ?? []).map(String)}
+                        onChange={(value) => onChange({ projects: value.map(Number) })}
+                    />
+                ) : (
+                    folderSelect
+                )}
 
                 <MultiSelect
                     label="Statuses"
@@ -197,12 +229,8 @@ export function FilterBar({ filters, options, onChange }: Props) {
                             })
                         }
                     />
-                    <Select
-                        label="Folder"
-                        value={filters.folder ? String(filters.folder) : ''}
-                        onChange={(event) => onChange({ folder: Number(event.target.value) || undefined })}
-                        options={[{ value: '', label: 'Any folder' }, ...folders]}
-                    />
+                    {/* Already promoted into the row above when scoped. */}
+                    {scopedFolders === null && folderSelect}
 
                     <Input
                         label="Anchor text contains"
@@ -254,8 +282,8 @@ const ADVANCED_KEYS: (keyof PostFilterState)[] = [
     'deadline',
 ];
 
-function hasAdvanced(filters: PostFilterState): boolean {
-    return ADVANCED_KEYS.some((key) => {
+function hasAdvanced(filters: PostFilterState, folderIsPromoted = false): boolean {
+    return ADVANCED_KEYS.filter((key) => !(folderIsPromoted && key === 'folder')).some((key) => {
         const value = filters[key];
 
         return Array.isArray(value) ? value.length > 0 : value !== undefined;

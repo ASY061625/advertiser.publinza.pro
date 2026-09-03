@@ -61,12 +61,25 @@ final readonly class PostFilters
         public string $sort = 'created_at',
         public string $direction = 'desc',
         public int $perPage = 25,
+        /**
+         * A project the grid is locked to. Not a filter: it never comes from
+         * the request, never round-trips through the query string, and never
+         * counts towards isFiltering() — a project's own Post management tab
+         * showing "no posts match these filters" because it is scoped to that
+         * project would be nonsense. Set it with forProject().
+         */
+        public ?int $projectScope = null,
     ) {}
 
-    public static function fromRequest(Request $request): self
+    /**
+     * The status tab's key is a parameter because a project's page already
+     * spends `tab` on which tab of the project is open. There, the grid's own
+     * tab travels as `posts_tab`; on /posts it is plain `tab`.
+     */
+    public static function fromRequest(Request $request, string $tabKey = 'tab'): self
     {
         return new self(
-            tab: PostTab::tryFromRequest($request->input('tab')),
+            tab: PostTab::tryFromRequest($request->input($tabKey)),
             search: self::text($request, 'q'),
             projects: self::ints($request, 'projects'),
             statuses: self::strings($request, 'statuses'),
@@ -106,8 +119,51 @@ final readonly class PostFilters
     }
 
     /**
+     * The same filters, locked to one project.
+     *
+     * Any `projects[]` from the query string is dropped rather than ANDed with
+     * the scope: the grid can only ever show this project, so leaving the value
+     * in would put a chip on screen for a filter that changes nothing.
+     */
+    public function forProject(int $projectId): self
+    {
+        return new self(
+            tab: $this->tab,
+            search: $this->search,
+            projects: [],
+            statuses: $this->statuses,
+            dateField: $this->dateField,
+            dateFrom: $this->dateFrom,
+            dateTo: $this->dateTo,
+            categories: $this->categories,
+            countries: $this->countries,
+            languages: $this->languages,
+            minPriceCents: $this->minPriceCents,
+            maxPriceCents: $this->maxPriceCents,
+            contentMode: $this->contentMode,
+            anchorContains: $this->anchorContains,
+            targetUrlContains: $this->targetUrlContains,
+            minDr: $this->minDr,
+            maxDr: $this->maxDr,
+            minTraffic: $this->minTraffic,
+            maxTraffic: $this->maxTraffic,
+            folderId: $this->folderId,
+            unreadOnly: $this->unreadOnly,
+            deadlineWithin: $this->deadlineWithin,
+            sort: $this->sort,
+            direction: $this->direction,
+            perPage: $this->perPage,
+            projectScope: $projectId,
+        );
+    }
+
+    /**
      * The query string this state serialises to. Defaults are omitted so a
      * plain /posts stays a plain URL rather than growing twenty empty keys.
+     *
+     * The status tab always serialises as `tab` here: this is the shape the
+     * client holds its filter state in, and the caller renames it if the URL
+     * it writes needs a different key.
      *
      * @return array<string, mixed>
      */

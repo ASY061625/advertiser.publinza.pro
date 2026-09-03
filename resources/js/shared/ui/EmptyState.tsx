@@ -6,12 +6,18 @@ export interface EmptyStateProps {
     illustration?: ReactNode;
     /** One line of direction. Never an apology, never two sentences. */
     direction: string;
-    /** Exactly one button. */
+    /**
+     * A supporting line under the direction, for the states that have to say
+     * what happens next. Given one, `direction` reads as the heading and takes
+     * the heavier weight.
+     */
+    body?: string;
+    /** The way out: one button, or a primary and a secondary. Not a menu. */
     action?: ReactNode;
     className?: string;
 }
 
-export function EmptyState({ illustration, direction, action, className }: EmptyStateProps) {
+export function EmptyState({ illustration, direction, body, action, className }: EmptyStateProps) {
     return (
         <div
             className={cn(
@@ -20,7 +26,14 @@ export function EmptyState({ illustration, direction, action, className }: Empty
             )}
         >
             {illustration && <div className="text-ink-300">{illustration}</div>}
-            <p className="max-w-sm text-md text-ink-700">{direction}</p>
+
+            <div className="flex max-w-md flex-col gap-1.5">
+                <p className={cn('text-md', body ? 'font-sora font-semibold text-ink-900' : 'text-ink-700')}>
+                    {direction}
+                </p>
+                {body && <p className="text-sm text-ink-500">{body}</p>}
+            </div>
+
             {action}
         </div>
     );

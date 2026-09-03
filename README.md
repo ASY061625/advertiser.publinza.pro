@@ -700,6 +700,67 @@ side columns of a landing-page row were padded to clear a label that only the fi
 
 ---
 
+## Post management — `/projects/{id}?tab=posts`
+
+The `/posts` grid, locked to one project. Not a copy of it: `Components/posts/PostsGrid` is one
+component, and `/posts` is now a thin page around the same thing. A fix to the filter round
+trip or the bulk bar lands on both surfaces at once, which is the whole reason to have done it.
+
+What the props change:
+
+| | `/posts` | Post management |
+| --- | --- | --- |
+| `path` | `/posts` | `/projects/{id}` |
+| `fixedQuery` | — | `{ tab: 'posts' }` |
+| `tabKey` | `tab` | `posts_tab` |
+| `only` | `posts`, `tabCounts`, … | `grid` |
+| `scope` | — | the project and its folders |
+| Saved views | yes | no |
+
+### `tab` was already taken
+
+A project's page spends `tab` on which of its six tabs is open, and the grid's status tabs want
+`tab` too. The grid's travels as `posts_tab`: `PostFilters::fromRequest()` takes the key as a
+parameter, `toQuery()` always emits `tab` because that is the shape the client holds state in,
+and the client renames it on the way out. `/posts` is byte-identical to before.
+
+### The scope is not a filter
+
+`PostFilters::projectScope` never comes from the request, never round-trips through the query
+string, and never counts towards `isFiltering()` — a project's own tab reporting "no posts
+match these filters" because it is scoped to that project would be nonsense. A crafted
+`projects[]=99` cannot widen it, and is dropped from the echoed filters so no chip appears for
+a filter that changes nothing.
+
+### Board mode
+
+Five columns — New, In progress, Content review, Posted, Rejected. Posted covers `posted` and
+`completed`, exactly as the Posted tab above it does; a column named Posted showing fewer posts
+than the tab named Posted is a bug on screen.
+
+Nothing drags. An advertiser cannot move a post between statuses: a post is `in_progress`
+because a writer is writing it and `posted` because a link is live. A board that accepted the
+gesture and snapped back would be worse than one that never offered it, so a line above the
+board says so and the cards open the drawer.
+
+Switching to Board raises the page size to 100 and switching back restores what was there. A
+board of twenty-five rows is not a board — whole columns come up empty while the tab above them
+says six.
+
+### Two bugs this surfaced
+
+**Every filter change on the tab refreshed nothing.** `usePostFilters` re-fetched
+`['posts', 'tabCounts', 'filters', 'isFiltering']` — prop names `/posts` has and this page does
+not, since it nests the lot under `grid`. Inertia returned none of them, so the URL changed and
+the grid kept showing the previous result. The prop list is a prop now, and a feature test
+sends the partial-reload headers to pin it.
+
+**`bg-subtle` painted nothing.** `subtle` is registered as a `borderColor` only, so the summary
+strip's vertical rules were invisible. They use `bg-ink-300`, which is what `border-subtle`
+resolves to.
+
+---
+
 ## Layout
 
 ```

@@ -38,6 +38,13 @@ final class ListPosts
                 'project:id,name',
                 'folder:id,name',
             ])
+            // One correlated EXISTS per row rather than a count: the grid only
+            // needs to know whether there is anything unread, and the board's
+            // dot and the row's marker both read the same boolean.
+            ->withExists(['conversations as has_unread' => fn (Builder $q) => $q
+                ->whereHas('messages', fn (Builder $m) => $m
+                    ->whereNull('messages.read_at')
+                    ->where('messages.sender_type', '!=', SenderType::User->value))])
             ->paginate($filters->perPage)
             ->withQueryString();
     }
@@ -100,6 +107,13 @@ final class ListPosts
     public function filtered(User $user, PostFilters $filters, bool $applyTab = true): Builder
     {
         $query = Post::query()->where('posts.user_id', $user->id);
+
+        // Applied before anything the request can influence, and never read
+        // back out of the query string: a project's Post management tab is
+        // that project's posts, and no crafted `projects[]` widens it.
+        if ($filters->projectScope !== null) {
+            $query->where('posts.project_id', $filters->projectScope);
+        }
 
         if ($applyTab && $filters->tab !== PostTab::All) {
             $query->whereIn('posts.status', array_map(
