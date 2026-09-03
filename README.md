@@ -761,6 +761,66 @@ resolves to.
 
 ---
 
+## Project settings — `/projects/{id}?tab=settings`
+
+Five sections, one form, one save: Basics, Targeting, Publisher brief, Landing pages, Danger
+zone. Anchors down the left rather than tabs — the sections submit together, and hiding four of
+them behind tabs would let someone save changes they cannot see. The footer bar only exists
+while something is unsaved, so the page is quiet until there is a decision to make.
+
+Most of it is components that already existed: the wizard's colour picker, rich brief editor
+and site preview, the folder editor's landing-page list, the shared `Combobox` and
+`MultiSelect`. What is new is the save, the live count and the Danger zone.
+
+### One transaction, one history entry per field
+
+`UpdateProjectSettings` takes a before/after snapshot around the write and hands the difference
+to `ProjectAudit`, which writes one `audit_logs` row per field that actually moved. Per field,
+because the History tab reads as a list of things that happened: "Category changed from Finance
+to Technology" is a sentence, and one row holding a diff of eleven columns is a blob somebody
+has to decode before they can read their own history. Values are stored as the label a person
+would recognise, never the id.
+
+Lists compare as sets, so reordering countries records nothing, and resaving an unchanged form
+records nothing at all.
+
+### The live match count
+
+`CountMatchingSites` answers what the targeting *on screen* would show, debounced at 350ms,
+with out-of-order responses dropped. Sensitive topics narrow rather than widen — a site matches
+only if it accepts every topic ticked, because an advertiser writing about crypto and gambling
+needs a site that takes both. "View them" carries the same unsaved targeting into the catalog,
+or the link would show a different set from the number above it.
+
+### Danger zone
+
+Archive is a status you flip back this afternoon; delete keeps the row for 30 days and then
+does not. Delete is refused while any post is unfinished, and the refusal is on screen before
+anything is typed, naming the posts with links — the difference between a rule and a dead end.
+
+### Two bugs this surfaced
+
+**`UrlNormalizer::hostOf()` and `normalize()` disagreed about what a URL is.** `normalize()`
+assumes `https` for a scheme-less input, so it accepts `example.com`; `hostOf()` called
+`parse_url` directly, so the same string had no host and every landing-page rule measured
+against it silently passed. In the other direction `parse_url` happily returned
+`"not a url at all"` as a host. `hostOf()` now routes through `normalize()`, so the two agree
+by construction.
+
+**The audit's "after" snapshot read names off an id-only relation.** `handle()` reloaded the
+pivots with `:id` selects and `snapshot()` then used `loadMissing`, which left them loaded and
+nameless — every targeting change recorded `[null, null]`. The snapshot uses `load()`.
+
+### One thing worth revisiting
+
+`PostStatus::Cancelled` is not terminal (it can still become `Refunded`), so a cancelled post
+blocks deleting its project. That is what "not in a terminal state" means and it is what this
+implements, but it means a project with one unrefunded cancellation cannot be deleted by its
+owner. The copy no longer claims money is held against those posts, because for a cancelled one
+it is not.
+
+---
+
 ## Layout
 
 ```

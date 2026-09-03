@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Projects\Actions;
 
 use App\Domain\Posts\Enums\PostStatus;
+use App\Domain\Posts\Models\Post;
 use App\Domain\Projects\Models\Project;
+use Illuminate\Database\Eloquent\Collection;
 use RuntimeException;
 
 /**
@@ -18,26 +20,51 @@ use RuntimeException;
  */
 final class DeleteProject
 {
+    /** How long a deleted project stays recoverable. */
+    public const RETENTION_DAYS = 30;
+
     public function handle(Project $project): void
     {
-        $blocking = $project->posts()
-            ->whereNotIn('status', $this->terminalValues())
-            ->count();
+        $blocking = $this->blockingPosts($project);
 
-        if ($blocking > 0) {
+        if ($blocking->isNotEmpty()) {
+            $count = $blocking->count();
+
             throw new RuntimeException(sprintf(
-                '%d post%s on this project %s still in progress. Cancel or wait for %s to finish, then delete the project.',
-                $blocking,
-                $blocking === 1 ? '' : 's',
-                $blocking === 1 ? 'is' : 'are',
-                $blocking === 1 ? 'it' : 'them',
+                '%d post%s on this project %s not finished. A post counts until it has been placed, rejected or '
+                .'refunded — wait for %s to settle, or cancel what is still being written, then delete the project.',
+                $count,
+                $count === 1 ? '' : 's',
+                $count === 1 ? 'has' : 'have',
+                $count === 1 ? 'it' : 'them',
             ));
         }
 
-        // Soft delete: the posts, their history and the money they moved stay
-        // readable, because an invoice referencing a placement has to keep
-        // resolving after the project it belonged to is gone.
+        // Soft delete, kept for RETENTION_DAYS: the posts, their history and
+        // the money they moved stay readable, because an invoice referencing a
+        // placement has to keep resolving after the project it belonged to is
+        // gone — and a deletion someone regrets on the same afternoon should
+        // not be the end of it.
         $project->delete();
+    }
+
+    /**
+     * The posts standing in the way, named so the screen can link to them.
+     *
+     * The Danger zone lists these before anything is typed rather than letting
+     * someone type the project's name and then refusing — and the refusal in
+     * handle() reads the same query, so the list and the rule cannot drift.
+     *
+     * @return Collection<int, Post>
+     */
+    public function blockingPosts(Project $project, int $limit = 50): Collection
+    {
+        return $project->posts()
+            ->whereNotIn('status', $this->terminalValues())
+            ->with('website:id,domain')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'website_id', 'status', 'anchor_text']);
     }
 
     /**

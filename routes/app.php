@@ -139,6 +139,12 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('/projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');
     Route::post('/projects/{project}/restore', [ProjectController::class, 'restore'])->name('projects.restore');
 
+    // Answers while someone is still ticking boxes on the settings form, so it
+    // is a read that runs on every change — throttled, and a plain count.
+    Route::get('/projects/{project}/match-count', [ProjectController::class, 'matchCount'])
+        ->middleware('throttle:120,1')
+        ->name('projects.match-count');
+
     // Folders live under the project they belong to, in the URL and in the
     // authorisation: every action checks the project, so a folder id from
     // another account cannot be reached by guessing it.

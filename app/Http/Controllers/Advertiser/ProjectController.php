@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advertiser;
 
+use App\Domain\Catalog\Actions\CountMatchingSites;
 use App\Domain\Catalog\Models\Country;
 use App\Domain\Catalog\Models\Language;
 use App\Domain\Catalog\Models\SensitiveTopic;
@@ -16,18 +17,21 @@ use App\Domain\Projects\Actions\ArchiveProject;
 use App\Domain\Projects\Actions\CreateProjectFromWizard;
 use App\Domain\Projects\Actions\DeleteProject;
 use App\Domain\Projects\Actions\FetchSitePreview;
+use App\Domain\Projects\Actions\GetFolderEditor;
 use App\Domain\Projects\Actions\GetProjectOverview;
 use App\Domain\Projects\Actions\ListProjects;
-use App\Domain\Projects\DTOs\ProjectData;
+use App\Domain\Projects\Actions\UpdateProjectSettings;
 use App\Domain\Projects\DTOs\ProjectFilters;
 use App\Domain\Projects\DTOs\ProjectWizardData;
 use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Enums\ProjectTab;
+use App\Domain\Projects\Models\LandingPage;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectDraft;
+use App\Domain\Projects\Support\ProjectAudit;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Advertiser\ProjectSettingsRequest;
 use App\Http\Requests\Advertiser\StoreProjectWizardRequest;
-use App\Http\Requests\Advertiser\UpdateProjectRequest;
 use App\Support\GridPreferences;
 use App\Support\PostGridPreferences;
 use Illuminate\Http\JsonResponse;
@@ -152,6 +156,9 @@ class ProjectController extends Controller
             'grid' => $tab === ProjectTab::Posts
                 ? $this->postsGrid($request, $project, app(ListPosts::class))
                 : null,
+            // Likewise: the settings form's option lists are eleven queries
+            // that the other five tabs have no use for.
+            'settings' => $tab === ProjectTab::Settings ? $this->settingsPayload($project) : null,
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -169,7 +176,6 @@ class ProjectController extends Controller
             'stats' => $data['stats'],
             'folders' => $data['folders'],
             'tab' => $tab->value,
-            'categories' => $this->categories(),
             'justCreated' => (bool) session('just_created', false),
             // Flashed by the folder editor so the row it just wrote can be
             // pointed at for a moment. Read once, then gone.
@@ -177,29 +183,47 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function update(UpdateProjectRequest $request, Project $project): RedirectResponse
-    {
+    /**
+     * The settings form.
+     *
+     * Everything lands in one transaction, and every field that actually
+     * changed becomes its own line in the project's history — see
+     * UpdateProjectSettings and ProjectAudit.
+     */
+    public function update(
+        ProjectSettingsRequest $request,
+        Project $project,
+        UpdateProjectSettings $save,
+    ): RedirectResponse {
         $this->authorize('update', $project);
 
-        $project->update(ProjectData::fromArray($request->validated())->toAttributes());
+        try {
+            $save->handle($request->user(), $project, $request->settings(), $request->ip());
+        } catch (RuntimeException $e) {
+            // A landing page posts already point at. The form disables Remove
+            // on those rows; this is the same refusal for anything past it.
+            return back()->withInput()->withErrors(['landing_pages' => $e->getMessage()]);
+        }
 
-        return back()->with('success', 'Project saved');
+        return back()->with('success', 'Saved');
     }
 
-    public function archive(Project $project, ArchiveProject $archive): RedirectResponse
+    public function archive(Request $request, Project $project, ArchiveProject $archive): RedirectResponse
     {
         $this->authorize('archive', $project);
 
         $archive->handle($project);
+        ProjectAudit::event($request->user(), $project, 'archived', $request->ip());
 
         return back()->with('success', "“{$project->name}” archived.");
     }
 
-    public function restore(Project $project, ArchiveProject $archive): RedirectResponse
+    public function restore(Request $request, Project $project, ArchiveProject $archive): RedirectResponse
     {
         $this->authorize('restore', $project);
 
         $archive->restore($project);
+        ProjectAudit::event($request->user(), $project, 'restored', $request->ip());
 
         return back()->with('success', "“{$project->name}” restored.");
     }
@@ -220,11 +244,88 @@ class ProjectController extends Controller
 
         try {
             $delete->handle($project);
+            ProjectAudit::event($request->user(), $project, 'deleted', $request->ip());
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 
         return to_route('projects.index')->with('success', "“{$name}” deleted.");
+    }
+
+    /**
+     * How many catalog sites the targeting on screen would show.
+     *
+     * Its own endpoint rather than a prop, because it has to answer while
+     * someone is still ticking boxes — the form asks as the selects change and
+     * the number is about what is typed, not what is saved.
+     */
+    public function matchCount(Request $request, Project $project, CountMatchingSites $count): JsonResponse
+    {
+        $this->authorize('view', $project);
+
+        $ids = fn (string $key): array => array_values(array_filter(array_map(
+            static fn (mixed $value): int => (int) $value,
+            (array) $request->input($key, []),
+        ), static fn (int $id): bool => $id > 0));
+
+        return response()->json([
+            'count' => $count->handle($ids('topics'), $ids('countries'), $ids('languages')),
+        ]);
+    }
+
+    /**
+     * The Project settings tab: the whole editable project, and what the
+     * Danger zone is allowed to do with it.
+     *
+     * @return array<string, mixed>
+     */
+    private function settingsPayload(Project $project): array
+    {
+        $project->load(['sensitiveTopics:id', 'countries:id', 'languages:id']);
+
+        $folder = $project->folders()->orderBy('sort_order')->orderBy('id')->first();
+        $usage = $folder === null ? [] : GetFolderEditor::usage($project);
+
+        return [
+            'values' => [
+                'name' => $project->name,
+                'website_url' => $project->website_url,
+                'category_id' => $project->category_id,
+                'color' => $project->color,
+                'publisher_task' => $project->publisher_task ?? '',
+                'sensitive_topic_ids' => $project->sensitiveTopics->pluck('id')->all(),
+                'country_ids' => $project->countries->pluck('id')->all(),
+                'language_ids' => $project->languages->pluck('id')->all(),
+                'landing_pages' => $folder === null ? [] : $folder->landingPages()
+                    ->get(['id', 'anchor_text', 'url'])
+                    ->map(fn (LandingPage $page): array => [
+                        'id' => $page->id,
+                        'key' => 'lp-'.$page->id,
+                        'anchor_text' => $page->anchor_text,
+                        'url' => $page->url,
+                        'usage' => $usage[GetFolderEditor::pairKey($page->anchor_text, $page->url)] ?? 0,
+                    ])->all(),
+            ],
+            'options' => [
+                'categories' => $this->categories(),
+                'topics' => SensitiveTopic::query()->orderBy('name')->get(['id', 'name'])->all(),
+                'countries' => Country::query()->orderBy('name')->get(['id', 'code', 'name'])->all(),
+                'languages' => Language::query()->orderBy('name')->get(['id', 'code', 'name'])->all(),
+                'colors' => ProjectWizardData::COLORS,
+            ],
+            // The landing pages live in the project's first folder. Saying so
+            // beats an advertiser wondering why editing them here also changed
+            // something over on the General tab.
+            'folderName' => $folder?->name,
+            'retentionDays' => DeleteProject::RETENTION_DAYS,
+            'blockingPosts' => app(DeleteProject::class)->blockingPosts($project)
+                ->map(fn (Post $post): array => [
+                    'id' => $post->id,
+                    'domain' => $post->website?->domain ?? '',
+                    'anchorText' => $post->anchor_text,
+                    'statusLabel' => $post->status->label(),
+                ])->all(),
+        ];
     }
 
     /**

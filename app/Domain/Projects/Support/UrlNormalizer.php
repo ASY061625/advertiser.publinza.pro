@@ -103,10 +103,24 @@ final class UrlNormalizer
     }
 
     /** The host of an already-normalised URL. */
+    /**
+     * The host of a URL, judged exactly as normalize() judges one.
+     *
+     * Routed through normalize() rather than reimplementing the parse: the two
+     * disagreeing is how "example.com" gets stored happily by one and refused
+     * as unreadable by the other. parse_url() alone is far too permissive here
+     * — it will hand back "not a url at all" as a host.
+     */
     public static function hostOf(string $url): ?string
     {
-        $host = parse_url($url, PHP_URL_HOST);
+        $normalized = self::normalize($url);
 
-        return is_string($host) ? strtolower($host) : null;
+        if ($normalized === null) {
+            return null;
+        }
+
+        $host = parse_url($normalized, PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' ? $host : null;
     }
 }

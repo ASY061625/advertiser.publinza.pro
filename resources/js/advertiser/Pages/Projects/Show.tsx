@@ -1,14 +1,16 @@
-import { Link, useForm } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { useState } from 'react';
-import { Alert, Button, EmptyState, Input, PlusIcon, Select, Textarea } from '@shared/ui';
+import { Alert, Button, EmptyState, PlusIcon } from '@shared/ui';
 import type {
     ProjectDetail,
     ProjectFolderRow,
     ProjectOverviewStats,
     ProjectPostsGrid,
+    ProjectSettingsPayload,
     ProjectTabId,
 } from '@shared/types/projects';
 import { PostsGrid, type PostsView } from '../../Components/posts/PostsGrid';
+import { ProjectSettingsForm } from '../../Components/projects/settings/ProjectSettingsForm';
 import { ProjectSummaryStrip } from '../../Components/projects/general/ProjectSummaryStrip';
 import { ProjectLayout } from '../../Layouts/ProjectLayout';
 import { DealsPanel } from '../../Components/projects/general/DealsPanel';
@@ -21,13 +23,14 @@ interface Props {
     stats: ProjectOverviewStats;
     folders: ProjectFolderRow[];
     tab: ProjectTabId;
-    categories: { id: number; name: string }[];
     /** Flashed by the create wizard, read once. */
     justCreated?: boolean;
     /** Flashed by the folder editor: the folder it just saved. */
     folderSaved?: number | null;
     /** Only sent for the Post management tab. */
     grid?: ProjectPostsGrid | null;
+    /** Only sent for the Project settings tab. */
+    settings?: ProjectSettingsPayload | null;
 }
 
 /**
@@ -44,17 +47,17 @@ export default function ProjectsShow({
     stats,
     folders,
     tab,
-    categories,
     justCreated = false,
     folderSaved = null,
     grid = null,
+    settings = null,
 }: Props) {
     return (
         <ProjectLayout project={project} tab={tab} postMix={stats.posts}>
             {tab === 'posts' && grid !== null ? (
                 <PostManagement project={project} stats={stats} grid={grid} />
-            ) : tab === 'settings' ? (
-                <SettingsForm project={project} categories={categories} />
+            ) : tab === 'settings' && settings !== null ? (
+                <ProjectSettingsForm project={project} settings={settings} />
             ) : tab === 'general' ? (
                 <General
                     project={project}
@@ -201,79 +204,5 @@ function NotBuiltYet({ tab }: { tab: ProjectTabId }) {
             <p className="text-base font-medium text-ink-900">Not here yet.</p>
             <p className="mx-auto mt-1 max-w-prose text-sm text-ink-500">{COMING[tab]}</p>
         </div>
-    );
-}
-
-function SettingsForm({ project, categories }: { project: ProjectDetail; categories: { id: number; name: string }[] }) {
-    const form = useForm({
-        name: project.name,
-        website_url: project.websiteUrl,
-        category_id: project.categoryId === null ? '' : String(project.categoryId),
-        publisher_task: project.publisherTask ?? '',
-    });
-
-    const archived = project.isArchived;
-
-    return (
-        <form
-            onSubmit={(event) => {
-                event.preventDefault();
-                form.put(`/projects/${project.id}`, { preserveScroll: true });
-            }}
-            className="flex max-w-xl flex-col gap-4 rounded-card border border-subtle bg-card p-5 shadow-card"
-        >
-            {archived && (
-                <p className="rounded-card bg-sunken px-3 py-2 text-sm text-ink-700">
-                    This project is archived and read-only. Restore it from the projects list to edit it.
-                </p>
-            )}
-
-            <Input
-                label="Project name"
-                value={form.data.name}
-                onChange={(event) => form.setData('name', event.target.value)}
-                error={form.errors.name}
-                disabled={archived}
-                required
-            />
-
-            <Input
-                label="Website you are promoting"
-                type="url"
-                value={form.data.website_url}
-                onChange={(event) => form.setData('website_url', event.target.value)}
-                error={form.errors.website_url}
-                disabled={archived}
-                required
-            />
-
-            <Select
-                label="Category"
-                value={form.data.category_id}
-                onChange={(event) => form.setData('category_id', event.target.value)}
-                error={form.errors.category_id}
-                disabled={archived}
-                options={[
-                    { value: '', label: 'No category' },
-                    ...categories.map((c) => ({ value: String(c.id), label: c.name })),
-                ]}
-            />
-
-            <Textarea
-                label="Notes for writers"
-                value={form.data.publisher_task}
-                onChange={(event) => form.setData('publisher_task', event.target.value)}
-                error={form.errors.publisher_task}
-                disabled={archived}
-                rows={4}
-                hint="The default brief. A folder can override it for the pages inside it."
-            />
-
-            <div className="flex justify-end border-t border-subtle pt-4">
-                <Button type="submit" loading={form.processing} disabled={archived}>
-                    Save changes
-                </Button>
-            </div>
-        </form>
     );
 }

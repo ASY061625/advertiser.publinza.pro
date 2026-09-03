@@ -111,7 +111,7 @@ it('refuses to delete a project whose posts are still in flight, and says why', 
     $this->actingAs($user)
         ->delete(advertiserUrl("/projects/{$project->id}"), ['name' => $project->name])
         ->assertSessionHas('error', fn (string $message): bool => str_contains($message, '1 post')
-            && str_contains($message, 'still in progress'));
+            && str_contains($message, 'not finished'));
 
     expect(Project::query()->find($project->id))->not->toBeNull();
 });

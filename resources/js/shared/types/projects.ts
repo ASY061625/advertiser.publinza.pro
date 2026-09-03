@@ -124,3 +124,37 @@ export interface ProjectPostsGrid {
     /** This project's folders, for the promoted Folder filter. */
     folders: { id: number; name: string }[];
 }
+
+/** A post standing in the way of deleting its project. */
+export interface ProjectBlockingPost {
+    id: number;
+    domain: string;
+    anchorText: string | null;
+    statusLabel: string;
+}
+
+/** The Project settings tab's payload, built only when that tab is open. */
+export interface ProjectSettingsPayload {
+    values: {
+        name: string;
+        website_url: string;
+        category_id: number | null;
+        color: string | null;
+        publisher_task: string;
+        sensitive_topic_ids: number[];
+        country_ids: number[];
+        language_ids: number[];
+        landing_pages: { id: number; key: string; anchor_text: string; url: string; usage: number }[];
+    };
+    options: {
+        categories: { id: number; name: string }[];
+        topics: { id: number; name: string }[];
+        countries: { id: number; code: string; name: string }[];
+        languages: { id: number; code: string; name: string }[];
+        colors: string[];
+    };
+    /** The folder the landing pages belong to, named so the form can say so. */
+    folderName: string | null;
+    retentionDays: number;
+    blockingPosts: ProjectBlockingPost[];
+}
