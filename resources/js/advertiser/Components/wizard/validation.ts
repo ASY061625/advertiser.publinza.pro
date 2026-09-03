@@ -1,4 +1,16 @@
-import type { WizardState } from '@shared/types/wizard';
+import type { LandingPageRow, WizardState } from '@shared/types/wizard';
+
+/**
+ * The part of the form the landing-page rules actually read.
+ *
+ * Narrower than WizardState on purpose: the folder editor has landing pages and
+ * a promoted URL but none of the wizard's other fields, and both screens have to
+ * validate a landing page the same way or one of them is wrong.
+ */
+export interface LandingPageContext {
+    website_url: string;
+    landing_pages: LandingPageRow[];
+}
 
 export const MAX_TASK_CHARS = 3000;
 
@@ -182,7 +194,7 @@ function missingStep3(state: WizardState): string[] {
  *
  * @returns index → message
  */
-export function landingPageErrors(state: WizardState): Record<number, string> {
+export function landingPageErrors(state: LandingPageContext): Record<number, string> {
     const promoted = hostOf(state.website_url);
     const errors: Record<number, string> = {};
 
@@ -218,7 +230,7 @@ export function landingPageErrors(state: WizardState): Record<number, string> {
 const COMMERCIAL =
     /\b(buy|best|top|cheap|price|pricing|deal|discount|coupon|review|reviews|compare|vs|software|tool|service|company|agency|near me|for sale|order|shop)\b/i;
 
-export function anchorHealth(state: WizardState): { total: number; commercial: number; share: number } {
+export function anchorHealth(state: LandingPageContext): { total: number; commercial: number; share: number } {
     const anchors = state.landing_pages.map((row) => row.anchor_text.trim()).filter((anchor) => anchor !== '');
 
     const brand =

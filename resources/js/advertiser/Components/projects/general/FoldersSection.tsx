@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@shared/lib/cn';
 import { number } from '@shared/lib/format';
 import { Alert, Button, FolderIcon, Modal, Tooltip, TrashIcon } from '@shared/ui';
@@ -10,6 +10,8 @@ interface Props {
     folders: ProjectFolderRow[];
     /** Archived projects are read-only, so the actions are not offered. */
     readOnly?: boolean;
+    /** The folder the editor just saved, pointed at for a couple of seconds. */
+    highlightId?: number | null;
 }
 
 /**
@@ -23,9 +25,23 @@ interface Props {
  * flight against the folder. The server refuses too; this is the courtesy, not
  * the guard.
  */
-export function FoldersSection({ projectId, folders, readOnly = false }: Props) {
+export function FoldersSection({ projectId, folders, readOnly = false, highlightId = null }: Props) {
     const [confirming, setConfirming] = useState<ProjectFolderRow | null>(null);
     const onlyGeneral = folders.length === 1;
+
+    // Long enough to catch the eye of someone arriving from the editor, short
+    // enough that it is not still glowing when they come back tomorrow.
+    const [lit, setLit] = useState<number | null>(highlightId);
+
+    useEffect(() => {
+        setLit(highlightId);
+
+        if (highlightId === null) return;
+
+        const timer = window.setTimeout(() => setLit(null), 2200);
+
+        return () => window.clearTimeout(timer);
+    }, [highlightId]);
 
     return (
         <section
@@ -52,7 +68,8 @@ export function FoldersSection({ projectId, folders, readOnly = false }: Props) 
                         key={folder.id}
                         className={cn(
                             'flex flex-wrap items-start justify-between gap-x-4 gap-y-2 rounded-card',
-                            'border border-subtle bg-canvas px-4 py-3',
+                            'border px-4 py-3 transition-colors duration-drawer ease-standard',
+                            lit === folder.id ? 'border-brand bg-brand-subtle' : 'border-subtle bg-canvas',
                         )}
                     >
                         <div className="flex min-w-0 flex-1 items-start gap-3">

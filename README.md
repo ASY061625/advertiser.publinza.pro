@@ -645,6 +645,61 @@ prescribes when activating a tab costs a page load.
 
 ---
 
+## Folder editor — `/projects/{id}/folders/{folderId}/edit`
+
+One centred form: the folder's name, the brief its posts are written against, and the landing
+pages inside it. `/projects/{id}/folders/create` is the same page with nothing filled in.
+
+### The landing-page list is one widget, used twice
+
+`Components/projects/LandingPageEditor` is the drag-reorderable list with bulk paste and
+per-row validation. The create wizard's third step is now a thin wrapper around it. They were
+the same list written twice, and a landing page validated one way in the wizard and another
+way here would be two different products — `landingPageErrors` and `anchorHealth` moved to a
+`LandingPageContext` (a promoted URL and some rows) so both screens can call them.
+
+The folder editor adds one thing the wizard has no use for: a row can already have posts
+pointing at it.
+
+### A page posts point at does not disappear
+
+Usage is matched on the anchor/URL pair, not a foreign key — a post records where it points in
+its own `anchor_text` and `target_url` columns, so a placement keeps meaning something after
+the landing page it was ordered from is edited. `GetFolderEditor` counts those pairs for the
+whole project in one grouped query and hands each row its number.
+
+Above zero, the row's Remove is disabled with the count in a tooltip, and `SaveFolder` refuses
+the same removal server-side — the whole save rolls back rather than half-applying. A rule
+only enforced in the browser is not a rule: a stale tab, a replayed request or a second window
+would all walk past it.
+
+### The submitted list is the whole truth
+
+Rows with an id are updated in place, rows without one are created, rows the browser stopped
+sending are deleted, and order comes from the array — so a drag and a rename are one save.
+An id that belongs to another folder is treated as a row that no longer exists and created
+fresh, rather than silently editing someone else's page.
+
+### Leaving without saving
+
+`beforeunload` covers a closed tab, Inertia's `before` hook covers a client-side visit, and
+neither covers the other. The save itself is a visit, so only `get` navigations are
+questioned. Cmd/Ctrl+S submits.
+
+### One bug this surfaced
+
+**Nothing rendered the server's flash messages.** Every redirect in the app carries
+`->with('success', …)` or `->with('error', …)` — archiving a project, deleting one, refusing a
+folder deletion — and none of them appeared anywhere; the screen just changed silently.
+`useFlashToasts` in the shell raises them as toasts, which is also how the editor's "Saved"
+arrives on the General tab.
+
+Two smaller ones: four breadcrumbs squeezed each other to nothing on a phone, because every
+crumb is `truncate` inside one flex row (the middle ones are now dropped below `sm`), and the
+side columns of a landing-page row were padded to clear a label that only the first row has.
+
+---
+
 ## Layout
 
 ```

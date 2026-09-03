@@ -15,6 +15,8 @@ interface Props {
     categories: { id: number; name: string }[];
     /** Flashed by the create wizard, read once. */
     justCreated?: boolean;
+    /** Flashed by the folder editor: the folder it just saved. */
+    folderSaved?: number | null;
 }
 
 /**
@@ -26,13 +28,27 @@ interface Props {
  * that looks broken. Post management is the posts grid scoped to this project,
  * so the controller redirects `?tab=posts` there instead of copying the grid.
  */
-export default function ProjectsShow({ project, stats, folders, tab, categories, justCreated = false }: Props) {
+export default function ProjectsShow({
+    project,
+    stats,
+    folders,
+    tab,
+    categories,
+    justCreated = false,
+    folderSaved = null,
+}: Props) {
     return (
         <ProjectLayout project={project} tab={tab} postMix={stats.posts}>
             {tab === 'settings' ? (
                 <SettingsForm project={project} categories={categories} />
             ) : tab === 'general' ? (
-                <General project={project} stats={stats} folders={folders} justCreated={justCreated} />
+                <General
+                    project={project}
+                    stats={stats}
+                    folders={folders}
+                    justCreated={justCreated}
+                    folderSaved={folderSaved}
+                />
             ) : (
                 <NotBuiltYet tab={tab} />
             )}
@@ -45,11 +61,13 @@ function General({
     stats,
     folders,
     justCreated,
+    folderSaved,
 }: {
     project: ProjectDetail;
     stats: ProjectOverviewStats;
     folders: ProjectFolderRow[];
     justCreated: boolean;
+    folderSaved: number | null;
 }) {
     return (
         <div className="flex flex-col gap-5">
@@ -73,7 +91,12 @@ function General({
                 </div>
             </div>
 
-            <FoldersSection projectId={project.id} folders={folders} readOnly={project.isArchived} />
+            <FoldersSection
+                projectId={project.id}
+                folders={folders}
+                readOnly={project.isArchived}
+                highlightId={folderSaved}
+            />
         </div>
     );
 }

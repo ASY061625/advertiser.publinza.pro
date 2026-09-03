@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Advertiser;
 
 use App\Domain\Projects\Actions\DeleteFolder;
+use App\Domain\Projects\Actions\GetFolderEditor;
+use App\Domain\Projects\Actions\SaveFolder;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectFolder;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Advertiser\FolderRequest;
-use App\Support\HtmlSanitizer;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
 use RuntimeException;
@@ -24,57 +25,49 @@ use RuntimeException;
  */
 class ProjectFolderController extends Controller
 {
-    public function create(Project $project): Response
+    public function create(Project $project, GetFolderEditor $editor): Response
     {
         $this->authorize('update', $project);
 
-        return inertia('Projects/Folders/Edit', [
-            'project' => $this->projectProps($project),
-            'folder' => null,
-        ]);
+        return inertia('Projects/Folders/Edit', $editor->handle($project, null));
     }
 
-    public function store(FolderRequest $request, Project $project): RedirectResponse
+    public function store(FolderRequest $request, Project $project, SaveFolder $save): RedirectResponse
     {
         $this->authorize('update', $project);
 
-        $folder = $project->folders()->create([
-            'name' => (string) $request->validated('name'),
-            'publisher_task' => $this->task($request),
-            // Appended, so a new folder lands at the bottom of the list rather
-            // than displacing the order someone already arranged.
-            'sort_order' => (int) $project->folders()->max('sort_order') + 1,
-        ]);
+        $folder = $save->handle($project, null, $this->payload($request));
 
-        return to_route('projects.show', $project)->with('success', "“{$folder->name}” added.");
+        return $this->backToGeneral($project, $folder->id);
     }
 
-    public function edit(Project $project, ProjectFolder $folder): Response
+    public function edit(Project $project, ProjectFolder $folder, GetFolderEditor $editor): Response
     {
         $this->authorize('update', $project);
         $this->belongsTo($project, $folder);
 
-        return inertia('Projects/Folders/Edit', [
-            'project' => $this->projectProps($project),
-            'folder' => [
-                'id' => $folder->id,
-                'name' => $folder->name,
-                'publisherTask' => $folder->publisher_task,
-            ],
-        ]);
+        return inertia('Projects/Folders/Edit', $editor->handle($project, $folder));
     }
 
-    public function update(FolderRequest $request, Project $project, ProjectFolder $folder): RedirectResponse
-    {
+    public function update(
+        FolderRequest $request,
+        Project $project,
+        ProjectFolder $folder,
+        SaveFolder $save,
+    ): RedirectResponse {
         $this->authorize('update', $project);
         $this->belongsTo($project, $folder);
 
-        $folder->update([
-            'name' => (string) $request->validated('name'),
-            'publisher_task' => $this->task($request),
-        ]);
+        try {
+            $save->handle($project, $folder, $this->payload($request));
+        } catch (RuntimeException $e) {
+            // A landing page that posts already point at. The editor disables
+            // Remove on those rows; this is the same refusal for anything that
+            // got past it, and it names the page rather than the rule.
+            return back()->withInput()->withErrors(['landing_pages' => $e->getMessage()]);
+        }
 
-        return to_route('projects.show', $project)->with('success', "“{$folder->name}” saved.");
+        return $this->backToGeneral($project, $folder->id);
     }
 
     public function destroy(Project $project, ProjectFolder $folder, DeleteFolder $delete): RedirectResponse
@@ -93,7 +86,34 @@ class ProjectFolderController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', "“{$name}” deleted.");
+        return to_route('projects.show', $project)->with('success', "“{$name}” deleted.");
+    }
+
+    /**
+     * Back to the General tab, saying which folder just changed so the row can
+     * be pointed at for a moment. The flash is about this arrival, not about the
+     * folder, so it is not stored anywhere.
+     */
+    private function backToGeneral(Project $project, int $folderId): RedirectResponse
+    {
+        return to_route('projects.show', $project)
+            ->with('success', 'Saved')
+            ->with('folder_saved', $folderId);
+    }
+
+    /**
+     * @return array{name: string, publisher_task: ?string, landing_pages: list<array<string, mixed>>}
+     */
+    private function payload(FolderRequest $request): array
+    {
+        /** @var list<array<string, mixed>> $pages */
+        $pages = $request->validated('landing_pages') ?? [];
+
+        return [
+            'name' => (string) $request->validated('name'),
+            'publisher_task' => $request->validated('publisher_task'),
+            'landing_pages' => array_values($pages),
+        ];
     }
 
     /**
@@ -103,35 +123,5 @@ class ProjectFolderController extends Controller
     private function belongsTo(Project $project, ProjectFolder $folder): void
     {
         abort_if($folder->project_id !== $project->id, 404);
-    }
-
-    /**
-     * The brief is publisher-facing rich text typed by the advertiser. It is
-     * put through the allowlist before storage, never on the way out — see
-     * HtmlSanitizer for why the sanitising happens once, on write.
-     */
-    private function task(FolderRequest $request): ?string
-    {
-        $raw = $request->validated('publisher_task');
-
-        if ($raw === null || trim((string) $raw) === '') {
-            return null;
-        }
-
-        $clean = HtmlSanitizer::clean((string) $raw);
-
-        return trim(strip_tags($clean)) === '' ? null : $clean;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function projectProps(Project $project): array
-    {
-        return [
-            'id' => $project->id,
-            'name' => $project->name,
-            'publisherTask' => $project->publisher_task,
-        ];
     }
 }

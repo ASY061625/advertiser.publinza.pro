@@ -7,6 +7,7 @@ import { CommandPalette } from '../Components/shell/CommandPalette';
 import { Header, type Crumb } from '../Components/shell/Header';
 import { Sidebar } from '../Components/shell/Sidebar';
 import { WhatsNewDrawer } from '../Components/shell/WhatsNewDrawer';
+import { useFlashToasts } from '../Components/shell/useFlashToasts';
 import { useShellCounts } from '../Components/shell/useShellCounts';
 
 const SIDEBAR_KEY = 'publinza.sidebar.collapsed';
@@ -48,6 +49,10 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
     const [changelogRead, setChangelogRead] = useState(false);
 
     const { counts } = useShellCounts(shell.counts, shell.echo, user?.id ?? null);
+
+    // The server's ->with('success'/'error') messages, surfaced. Here rather
+    // than per page, because every redirect in the app carries one.
+    useFlashToasts();
 
     const toggleSidebar = useCallback(() => {
         setCollapsed((current) => {

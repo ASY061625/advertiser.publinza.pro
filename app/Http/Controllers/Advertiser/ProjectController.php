@@ -168,6 +168,9 @@ class ProjectController extends Controller
             'tab' => $tab->value,
             'categories' => $this->categories(),
             'justCreated' => (bool) session('just_created', false),
+            // Flashed by the folder editor so the row it just wrote can be
+            // pointed at for a moment. Read once, then gone.
+            'folderSaved' => session('folder_saved'),
         ]);
     }
 

@@ -7,6 +7,17 @@ interface Props {
     value: string;
     onChange: (html: string) => void;
     error?: string;
+    /** Overridden by the folder editor, where the brief is the folder's. */
+    label?: string;
+    hint?: string;
+    /**
+     * Renders a "Copy from project" link beside the template menu. Given only
+     * where there is a project-level brief to copy — an action that would do
+     * nothing is worse than no action at all.
+     */
+    onCopyFromProject?: () => void;
+    /** Unique when two briefs could appear on one page. */
+    id?: string;
 }
 
 /**
@@ -50,7 +61,15 @@ const TEMPLATES: { id: string; label: string; html: string }[] = [
     },
 ];
 
-export function RichBriefEditor({ value, onChange, error }: Props) {
+export function RichBriefEditor({
+    value,
+    onChange,
+    error,
+    label = 'Task for the publisher',
+    hint = 'Tone, things to avoid, anything a writer should know. Bold, italic, lists and links only.',
+    onCopyFromProject,
+    id = 'publisher-task',
+}: Props) {
     const ref = useRef<HTMLDivElement>(null);
 
     // Written into the DOM only when the two have genuinely diverged. Setting
@@ -91,26 +110,38 @@ export function RichBriefEditor({ value, onChange, error }: Props) {
     return (
         <div>
             <div className="flex flex-wrap items-end justify-between gap-2">
-                <label htmlFor="publisher-task" className="text-sm font-medium text-ink-700">
-                    Task for the publisher
+                <label htmlFor={id} className="text-sm font-medium text-ink-700">
+                    {label}
                 </label>
 
-                <Dropdown
-                    align="end"
-                    items={TEMPLATES.map((template) => ({
-                        id: template.id,
-                        label: template.label,
-                        onSelect: () => onChange(template.html),
-                    }))}
-                    trigger={
+                <span className="flex items-center gap-3">
+                    {onCopyFromProject && (
                         <button
                             type="button"
+                            onClick={onCopyFromProject}
                             className="rounded-button px-2 py-1 text-sm font-medium text-brand hover:bg-brand-subtle"
                         >
-                            Use a template
+                            Copy from project
                         </button>
-                    }
-                />
+                    )}
+
+                    <Dropdown
+                        align="end"
+                        items={TEMPLATES.map((template) => ({
+                            id: template.id,
+                            label: template.label,
+                            onSelect: () => onChange(template.html),
+                        }))}
+                        trigger={
+                            <button
+                                type="button"
+                                className="rounded-button px-2 py-1 text-sm font-medium text-brand hover:bg-brand-subtle"
+                            >
+                                Use a template
+                            </button>
+                        }
+                    />
+                </span>
             </div>
 
             <div className="mt-1.5 overflow-hidden rounded-input border border-subtle bg-card focus-within:border-brand">
@@ -133,11 +164,11 @@ export function RichBriefEditor({ value, onChange, error }: Props) {
                 </div>
 
                 <div
-                    id="publisher-task"
+                    id={id}
                     ref={ref}
                     role="textbox"
                     aria-multiline="true"
-                    aria-label="Task for the publisher"
+                    aria-label={label}
                     contentEditable
                     suppressContentEditableWarning
                     onInput={(event) => onChange(event.currentTarget.innerHTML)}
@@ -153,9 +184,7 @@ export function RichBriefEditor({ value, onChange, error }: Props) {
             </div>
 
             <div className="mt-1.5 flex items-start justify-between gap-3">
-                <p className="text-sm text-ink-500">
-                    Tone, things to avoid, anything a writer should know. Bold, italic, lists and links only.
-                </p>
+                <p className="text-sm text-ink-500">{hint}</p>
                 <span className={cn('num shrink-0 text-sm', over ? 'font-medium text-danger' : 'text-ink-500')}>
                     {used.toLocaleString('en-US')}/{MAX_TASK_CHARS.toLocaleString('en-US')}
                 </span>

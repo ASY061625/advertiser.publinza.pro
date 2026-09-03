@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
+import { cn } from '@shared/lib/cn';
 import { ChevronRightIcon, HeartIcon, MenuIcon, MoreIcon, SparkleIcon, useDismiss } from '@shared/ui';
 import type { Shell, ShellCounts } from '@shared/types/shell';
 import type { User } from '@shared/types';
@@ -39,13 +40,22 @@ export function Header({ crumbs, shell, counts, user, onOpenWhatsNew, onOpenMobi
                     <MenuIcon size={18} />
                 </button>
 
+                {/* Four crumbs do not fit a phone. Every crumb is `truncate`
+                    inside one flex row, so on a narrow screen they all squeeze
+                    to nothing and the trail reads "M… › › › S…". Below `sm`
+                    the middle ones are dropped and the first stands in for
+                    them; the page's own h1 says where you are. */}
                 <nav aria-label="Breadcrumb" className="min-w-0">
                     <ol className="flex min-w-0 items-center gap-1.5">
                         {crumbs.map((crumb, index) => {
                             const last = index === crumbs.length - 1;
+                            const middle = index > 0 && !last;
 
                             return (
-                                <li key={crumb.label} className="flex min-w-0 items-center gap-1.5">
+                                <li
+                                    key={crumb.label}
+                                    className={cn('min-w-0 items-center gap-1.5', middle ? 'hidden sm:flex' : 'flex')}
+                                >
                                     {index > 0 && (
                                         <ChevronRightIcon
                                             size={14}
