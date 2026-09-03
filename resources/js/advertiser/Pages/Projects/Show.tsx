@@ -9,9 +9,11 @@ import type {
     ProjectSettingsPayload,
     ProjectTabId,
 } from '@shared/types/projects';
+import type { HistoryPayload } from '@shared/types/history';
 import type { StatisticsPayload } from '@shared/types/statistics';
 import { PostsGrid, type PostsView } from '../../Components/posts/PostsGrid';
 import { ProjectSettingsForm } from '../../Components/projects/settings/ProjectSettingsForm';
+import { HistoryTab } from '../../Components/projects/history/HistoryTab';
 import { StatisticsTab } from '../../Components/projects/statistics/StatisticsTab';
 import { ProjectSummaryStrip } from '../../Components/projects/general/ProjectSummaryStrip';
 import { ProjectLayout } from '../../Layouts/ProjectLayout';
@@ -35,6 +37,8 @@ interface Props {
     settings?: ProjectSettingsPayload | null;
     /** Only sent for the Statistics tab. */
     statistics?: StatisticsPayload | null;
+    /** Only sent for the History tab. */
+    history?: HistoryPayload | null;
 }
 
 /**
@@ -56,6 +60,7 @@ export default function ProjectsShow({
     grid = null,
     settings = null,
     statistics = null,
+    history = null,
 }: Props) {
     return (
         <ProjectLayout project={project} tab={tab} postMix={stats.posts}>
@@ -65,6 +70,8 @@ export default function ProjectsShow({
                 <ProjectSettingsForm project={project} settings={settings} />
             ) : tab === 'statistics' && statistics !== null ? (
                 <StatisticsTab project={project} statistics={statistics} />
+            ) : tab === 'history' && history !== null ? (
+                <HistoryTab project={project} history={history} />
             ) : tab === 'general' ? (
                 <General
                     project={project}
@@ -200,7 +207,6 @@ function PostManagement({
 }
 
 const COMING: Record<string, string> = {
-    history: 'Every change to this project and its posts, with who made it and when.',
     competitors: 'The sites ranking against yours, and where they are being published.',
 };
 

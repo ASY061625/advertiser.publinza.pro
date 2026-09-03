@@ -890,6 +890,74 @@ was already on disk reported failure. The notification is queued now, and its se
 
 ---
 
+## History — `/projects/{id}?tab=history`
+
+Everything that has happened to one project, newest first, grouped by day. Nothing on this tab
+is editable or deletable — not because a flag says so, but because `GetProjectHistory` has no
+write path at all. The log is the records themselves.
+
+### Unioned at read time, not copied into an events table
+
+Four append-only tables already hold this history: `audit_logs`, `post_status_history`,
+`transactions`, and `messages`. They are unioned into nine common columns per request rather
+than duplicated into an events table, for two reasons. A second copy is a second thing that can
+drift from the record it describes — and a events table added today would have nothing to say
+about anything that happened before it, while this reads the whole past on the day it ships.
+
+The sentences are written at read time too, in `HistoryNarrator`. The record is the fact; the
+sentence is a rendering of it, so "Category changed from Finance to Technology" can be improved
+without rewriting history.
+
+No SQL string-building anywhere in the union. `||` concatenates on SQLite and means OR on
+MySQL, `CONCAT()` is the other way round, and `PIPES_AS_CONCAT` is not set — so every column is
+selected raw and anything composite is assembled in PHP, where it means one thing on both.
+
+### The scroll is a cursor, not a page number
+
+`(occurred_at, source, source_id)` — the sort spelled out as a predicate. An offset is not a
+position in an append-only log read newest-first: anything written between two requests pushes
+every row down one, and page two repeats the last row of page one.
+
+The first version pinned a `before` timestamp to stop exactly that, and it was not enough. Rows
+from four tables routinely share a timestamp to the second, so a second-granularity ceiling
+cannot say which of them the reader has already seen — sixty audit rows written in the same
+second reproduced the repeat the ceiling existed to prevent. The tiebreak is not decoration;
+it is what makes the order total, and the cursor names a row rather than an instant.
+
+"Jump to date" rides the same parameter. A cursor of `2026-04-18` carries no tiebreak and reads
+inclusively from the last instant of that day, which is what jumping to a date means — a
+reading position, not a filter. The entry count above stays the whole log, because it is
+counted without the cursor: a number that fell as you scrolled would be describing the scroll.
+
+### Actors, and who is never named
+
+An advertiser is named. Publinza staff are always "Publinza team" and everything else is
+"System". `HistoryNarrator` does not look an admin up at all — putting a staff member's name on
+a permanent log is not a decision to make by accident, so there is nothing to fetch.
+
+### Two bugs this surfaced
+
+**Money events would have returned nothing, silently.** The join was written against
+`reference_type = 'post'`. There is no morph map configured, so the wallet stores the full class
+name from `getMorphClass()` — the join matched no rows, and a timeline missing its money is a
+timeline that looks complete. It is `Post::class` now.
+
+**A word-level diff that struck through words nobody edited.** Tokenising on whitespace glues
+punctuation to the word in front of it, so adding a comma after "plain" rendered as deleting
+"plain" and inserting "plain," — the word printed twice, once struck through. Punctuation is
+its own token now, and the diff shows only what changed.
+
+### One thing the tests could not have caught
+
+`AuthenticateSession` is in the advertiser middleware stack, which ties a session to the
+password hash on it. A test that signs in as one person, makes a request, then signs in as
+another and reuses the same session is logged out before any policy runs — the second request
+redirects to login and an authorisation assertion fails for a reason that has nothing to do
+with authorisation. The middleware is doing its job; the test now uses one outsider for both
+requests.
+
+---
+
 ## Layout
 
 ```

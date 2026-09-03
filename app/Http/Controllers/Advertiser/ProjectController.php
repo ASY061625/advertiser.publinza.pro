@@ -21,9 +21,12 @@ use App\Domain\Projects\Actions\CreateProjectFromWizard;
 use App\Domain\Projects\Actions\DeleteProject;
 use App\Domain\Projects\Actions\FetchSitePreview;
 use App\Domain\Projects\Actions\GetFolderEditor;
+use App\Domain\Projects\Actions\GetProjectHistory;
 use App\Domain\Projects\Actions\GetProjectOverview;
 use App\Domain\Projects\Actions\ListProjects;
 use App\Domain\Projects\Actions\UpdateProjectSettings;
+use App\Domain\Projects\DTOs\HistoryCursor;
+use App\Domain\Projects\DTOs\HistoryFilters;
 use App\Domain\Projects\DTOs\ProjectFilters;
 use App\Domain\Projects\DTOs\ProjectWizardData;
 use App\Domain\Projects\Enums\ProjectStatus;
@@ -42,11 +45,16 @@ use App\Support\PostGridPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Response;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProjectController extends Controller
 {
+    /** 50 pages of 50 — a ceiling on the history CSV, not a page size. */
+    private const EXPORT_PAGE_LIMIT = 50;
+
     public function index(Request $request, ListProjects $list): Response
     {
         $user = $request->user();
@@ -167,6 +175,9 @@ class ProjectController extends Controller
             'statistics' => $tab === ProjectTab::Statistics
                 ? $this->statisticsPayload($request, $project, app(GetProjectStatistics::class))
                 : null,
+            'history' => $tab === ProjectTab::History
+                ? $this->historyPayload($request, $project, app(GetProjectHistory::class))
+                : null,
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -283,6 +294,80 @@ class ProjectController extends Controller
         ) + [
             'folders' => $project->folders()->orderBy('sort_order')->orderBy('id')->get(['id', 'name'])->all(),
         ];
+    }
+
+    /**
+     * The History tab: one project's timeline, from the records themselves.
+     *
+     * @return array<string, mixed>
+     */
+    private function historyPayload(Request $request, Project $project, GetProjectHistory $history): array
+    {
+        $filters = HistoryFilters::fromRequest($request);
+        $page = $history->handle($project, $filters);
+
+        return $page + [
+            'filters' => $filters->toQuery(),
+            'isFiltering' => $filters->isFiltering(),
+            'perPage' => HistoryFilters::PER_PAGE,
+            'cursor' => $filters->cursor?->toQuery(),
+            // "Nothing has happened yet" and "nothing matches these filters"
+            // are different situations with different things to do about them.
+            'hasAnyHistory' => $filters->isFiltering() || $filters->cursor !== null
+                ? $history->handle($project, new HistoryFilters)['total'] > 0
+                : $page['total'] > 0,
+        ];
+    }
+
+    /**
+     * The timeline as a CSV, streamed.
+     *
+     * Not queued, unlike the statistics export: this is one query and a few
+     * thousand rows at the outside, and a job would put a notification between
+     * an advertiser and a file they could already have had.
+     */
+    public function exportHistory(Request $request, Project $project, GetProjectHistory $history): StreamedResponse
+    {
+        $this->authorize('view', $project);
+
+        $filters = HistoryFilters::fromRequest($request);
+        $name = Str::slug($project->name) ?: 'project';
+
+        return response()->streamDownload(function () use ($project, $filters, $history): void {
+            $handle = fopen('php://output', 'wb');
+
+            // A BOM, so Excel opens a UTF-8 CSV as UTF-8.
+            fwrite($handle, "\u{FEFF}");
+            fputcsv($handle, ['When', 'Family', 'Event', 'Actor', 'Description']);
+
+            // Walked with the cursor rather than loaded whole: the log is the
+            // one thing here that grows without limit, and the cursor is what
+            // keeps a row from being written twice into the file if something
+            // happens while it streams.
+            $cursor = $filters->cursor;
+
+            for ($page = 1; $page <= self::EXPORT_PAGE_LIMIT; $page++) {
+                $chunk = $history->handle($project, $filters->withCursor($cursor));
+
+                foreach ($chunk['events'] as $event) {
+                    fputcsv($handle, [
+                        $event['occurredAt'],
+                        $event['family'],
+                        $event['eventKey'],
+                        $event['actor'],
+                        $event['description'],
+                    ]);
+                }
+
+                if (! $chunk['hasMore']) {
+                    break;
+                }
+
+                $cursor = HistoryCursor::parse($chunk['nextCursor']);
+            }
+
+            fclose($handle);
+        }, "{$name}-history.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

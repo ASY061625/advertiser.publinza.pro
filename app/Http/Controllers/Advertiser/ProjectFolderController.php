@@ -9,9 +9,11 @@ use App\Domain\Projects\Actions\GetFolderEditor;
 use App\Domain\Projects\Actions\SaveFolder;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectFolder;
+use App\Domain\Projects\Support\ProjectAudit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Advertiser\FolderRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Response;
 use RuntimeException;
 
@@ -36,7 +38,13 @@ class ProjectFolderController extends Controller
     {
         $this->authorize('update', $project);
 
-        $folder = $save->handle($project, null, $this->payload($request));
+        $payload = $this->payload($request);
+        $folder = $save->handle($project, null, $payload);
+
+        ProjectAudit::folderEvent($request->user(), $project, 'folder.added', [
+            'folder' => $folder->name,
+            'landing_pages' => count($payload['landing_pages']),
+        ], $request->ip());
 
         return $this->backToGeneral($project, $folder->id);
     }
@@ -58,6 +66,11 @@ class ProjectFolderController extends Controller
         $this->authorize('update', $project);
         $this->belongsTo($project, $folder);
 
+        $before = [
+            'name' => $folder->name,
+            'landing_pages' => $folder->landingPages()->count(),
+        ];
+
         try {
             $save->handle($project, $folder, $this->payload($request));
         } catch (RuntimeException $e) {
@@ -67,11 +80,24 @@ class ProjectFolderController extends Controller
             return back()->withInput()->withErrors(['landing_pages' => $e->getMessage()]);
         }
 
+        $folder->refresh();
+
+        ProjectAudit::folderEvent($request->user(), $project, 'folder.edited', [
+            'folder' => $folder->name,
+            'renamed_from' => $before['name'] === $folder->name ? null : $before['name'],
+            'landing_pages_before' => $before['landing_pages'],
+            'landing_pages_after' => $folder->landingPages()->count(),
+        ], $request->ip());
+
         return $this->backToGeneral($project, $folder->id);
     }
 
-    public function destroy(Project $project, ProjectFolder $folder, DeleteFolder $delete): RedirectResponse
-    {
+    public function destroy(
+        Request $request,
+        Project $project,
+        ProjectFolder $folder,
+        DeleteFolder $delete,
+    ): RedirectResponse {
         $this->authorize('update', $project);
         $this->belongsTo($project, $folder);
 
@@ -79,6 +105,10 @@ class ProjectFolderController extends Controller
 
         try {
             $delete->handle($folder);
+
+            ProjectAudit::folderEvent($request->user(), $project, 'folder.removed', [
+                'folder' => $name,
+            ], $request->ip());
         } catch (RuntimeException $e) {
             // The reason, not just a refusal. The list already knows a folder
             // is blocked and disables its Delete; this is the server saying the

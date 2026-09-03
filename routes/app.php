@@ -151,6 +151,12 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->middleware('throttle:20,1')
         ->name('projects.statistics.export');
 
+    // Streamed rather than queued: one query, and a job would put a
+    // notification between an advertiser and a file they could already have.
+    Route::get('/projects/{project}/history/export', [ProjectController::class, 'exportHistory'])
+        ->middleware('throttle:20,1')
+        ->name('projects.history.export');
+
     // The one address a finished export is fetched from. Ownership and the
     // 24-hour window are checked here rather than baked into a signed URL that
     // would outlive both.

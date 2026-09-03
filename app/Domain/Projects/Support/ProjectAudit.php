@@ -59,16 +59,50 @@ final class ProjectAudit
 
     /**
      * A lone event with no before/after — archiving, restoring, deleting.
+     *
+     * @param  array<string, mixed>|null  $changes
      */
-    public static function event(User $actor, Project $project, string $action, ?string $ip = null): void
-    {
+    public static function event(
+        User $actor,
+        Project $project,
+        string $action,
+        ?string $ip = null,
+        ?array $changes = null,
+    ): void {
         AuditLog::query()->create([
             'actor_type' => ActorType::User,
             'actor_id' => $actor->id,
             'action' => 'project.'.$action,
             'auditable_type' => Project::class,
             'auditable_id' => $project->id,
-            'changes' => null,
+            'changes' => $changes,
+            'ip_address' => $ip,
+        ]);
+    }
+
+    /**
+     * A folder or one of its landing pages.
+     *
+     * Recorded against the *project*, not the folder: the History tab reads
+     * one project's timeline, and a row keyed to a folder that has since been
+     * deleted would drop out of the log the moment it mattered most.
+     *
+     * @param  array<string, mixed>  $changes
+     */
+    public static function folderEvent(
+        User $actor,
+        Project $project,
+        string $action,
+        array $changes,
+        ?string $ip = null,
+    ): void {
+        AuditLog::query()->create([
+            'actor_type' => ActorType::User,
+            'actor_id' => $actor->id,
+            'action' => $action,
+            'auditable_type' => Project::class,
+            'auditable_id' => $project->id,
+            'changes' => $changes,
             'ip_address' => $ip,
         ]);
     }
