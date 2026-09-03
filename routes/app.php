@@ -12,6 +12,7 @@ use App\Http\Controllers\Advertiser\BillingController;
 use App\Http\Controllers\Advertiser\CartController;
 use App\Http\Controllers\Advertiser\CatalogController;
 use App\Http\Controllers\Advertiser\DashboardController;
+use App\Http\Controllers\Advertiser\ExportController;
 use App\Http\Controllers\Advertiser\MessageController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\PostGridController;
@@ -144,6 +145,16 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('/projects/{project}/match-count', [ProjectController::class, 'matchCount'])
         ->middleware('throttle:120,1')
         ->name('projects.match-count');
+
+    // Queued: the response says the job started, not that the file is ready.
+    Route::post('/projects/{project}/statistics/export', [ProjectController::class, 'exportStatistics'])
+        ->middleware('throttle:20,1')
+        ->name('projects.statistics.export');
+
+    // The one address a finished export is fetched from. Ownership and the
+    // 24-hour window are checked here rather than baked into a signed URL that
+    // would outlive both.
+    Route::get('/exports/{export}/download', [ExportController::class, 'download'])->name('exports.download');
 
     // Folders live under the project they belong to, in the URL and in the
     // authorisation: every action checks the project, so a folder id from

@@ -821,6 +821,75 @@ it is not.
 
 ---
 
+## Statistics — `/projects/{id}?tab=statistics`
+
+A control bar, four cards, five charts and a sortable table, all reading one payload — so
+nothing on the tab can disagree with anything else on it. Two queries carry the lot: the posts
+published inside the range and the posts ordered inside it, bucketed in PHP.
+
+"Published" is the event everything financial hangs off. A placement's price is spent when its
+link goes live, not when it is ordered, which is why spend and placements share the
+`published_at` bucket while "ordered" has its own — and why the two charts rarely peak in the
+same period.
+
+### No dual axis, anywhere
+
+The Links chart was specified as a stacked bar with "a running total of live links as a line on
+a secondary axis". It is built instead as two plots on one shared x-axis and one crosshair.
+Links built per period runs to single digits and links live runs to hundreds, so a second
+y-scale means choosing two axis ranges — and where the bars and the line then appear to cross
+is decided by that choice rather than by the data. The chart would invent a relationship. The
+dashboard's combo chart made the same call for the same reason.
+
+### The palettes are validated, not chosen
+
+Run through the `dataviz` validator before any chart code was written:
+
+| Chart | Pair | CVD ΔE | Normal ΔE |
+| --- | --- | --- | --- |
+| Guest posts | teal / gold | 14.1 (protan) | 24.9 |
+| Links | brand blue / teal | 28.7 (deutan) | 31.8 |
+
+A tint of teal for "ordered" — the obvious first choice — **failed**: ΔE 12.4 for normal vision,
+under the hard floor of 15, plus a chroma failure. Gold is both further away and already this
+product's token for pending. Teal and gold both sit under 3:1 against white, which obliges
+visible relief: every chart carries axis labels, direct labels on peaks, and a table view.
+
+Budget and the two breakdowns are single-series, so they get one hue and no legend — the title
+names what is plotted, and each breakdown row is directly labelled with its own amount. The
+cumulative line is the same hue dashed, because it is the same measure accumulated; a second
+colour would say otherwise.
+
+### Exports without a spreadsheet library
+
+Composer cannot authenticate for PhpSpreadsheet or dompdf in this environment, so both writers
+are here. `XlsxWriter` builds the OOXML parts and zips them with `ZipArchive` — about a hundred
+lines, and numbers are written as numbers, because a money column that arrives in Excel as text
+is a column nobody can sum. `PdfTableWriter` emits PDF 1.4 with Helvetica and absolute text
+positions, paginating the table; it is deliberately limited (no images, no wrapping, WinAnsi
+only) and the limits are why it is safe.
+
+All three formats build from one set of rows. A CSV that says one thing and a PDF that says
+another is the classic export bug, and it happens the moment each format builds its own query.
+
+Exports are queued, the row tracks the job, and the download link checks ownership and a 24-hour
+window at request time rather than being baked into a signed URL that would outlive both.
+
+### Two bugs this surfaced
+
+**Every export arrived empty.** The job built into `storage/app/exports` and stored to
+`exports/…` on the local disk — whose root is `storage/app`, so those are the same file. It
+wrote it, copied it onto itself, and the cleanup deleted it. The test missed it because
+`Storage::fake` moves the disk root somewhere the builder was not writing; it now reads the
+stored bytes back.
+
+**A mail outage failed a finished export.** The notification was sent inline inside the job, so
+an unreachable mail server threw, the `catch` marked the row `failed`, and an export whose file
+was already on disk reported failure. The notification is queued now, and its send has its own
+`catch` — a build that succeeded is not undone by an announcement that could not go out.
+
+---
+
 ## Layout
 
 ```

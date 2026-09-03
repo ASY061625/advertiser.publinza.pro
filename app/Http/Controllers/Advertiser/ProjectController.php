@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advertiser;
 
+use App\Domain\Analytics\Actions\BuildStatisticsExport;
+use App\Domain\Analytics\Actions\GetProjectStatistics;
+use App\Domain\Analytics\DTOs\DateRange;
 use App\Domain\Catalog\Actions\CountMatchingSites;
 use App\Domain\Catalog\Models\Country;
 use App\Domain\Catalog\Models\Language;
@@ -29,9 +32,11 @@ use App\Domain\Projects\Models\LandingPage;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectDraft;
 use App\Domain\Projects\Support\ProjectAudit;
+use App\Domain\System\Models\ExportJob;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Advertiser\ProjectSettingsRequest;
 use App\Http\Requests\Advertiser\StoreProjectWizardRequest;
+use App\Jobs\BuildStatisticsExportJob;
 use App\Support\GridPreferences;
 use App\Support\PostGridPreferences;
 use Illuminate\Http\JsonResponse;
@@ -159,6 +164,9 @@ class ProjectController extends Controller
             // Likewise: the settings form's option lists are eleven queries
             // that the other five tabs have no use for.
             'settings' => $tab === ProjectTab::Settings ? $this->settingsPayload($project) : null,
+            'statistics' => $tab === ProjectTab::Statistics
+                ? $this->statisticsPayload($request, $project, app(GetProjectStatistics::class))
+                : null,
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -250,6 +258,73 @@ class ProjectController extends Controller
         }
 
         return to_route('projects.index')->with('success', "“{$name}” deleted.");
+    }
+
+    /**
+     * The Statistics tab: the charts, the summary and the table behind them.
+     *
+     * @return array<string, mixed>
+     */
+    private function statisticsPayload(Request $request, Project $project, GetProjectStatistics $stats): array
+    {
+        $folderId = $request->integer('folder') ?: null;
+
+        // A folder id from another project would silently empty every chart
+        // rather than being refused, so it is checked rather than trusted.
+        if ($folderId !== null && ! $project->folders()->whereKey($folderId)->exists()) {
+            $folderId = null;
+        }
+
+        return $stats->handle(
+            $project,
+            DateRange::fromRequest($request),
+            (string) $request->input('granularity', 'day'),
+            $folderId,
+        ) + [
+            'folders' => $project->folders()->orderBy('sort_order')->orderBy('id')->get(['id', 'name'])->all(),
+        ];
+    }
+
+    /**
+     * Queues an export of the statistics table.
+     *
+     * Queued rather than streamed: a year of daily rows as a PDF is not a
+     * request anybody should hold a connection open for. The row is returned
+     * so the tab can say the job started.
+     */
+    public function exportStatistics(Request $request, Project $project): JsonResponse
+    {
+        $this->authorize('view', $project);
+
+        $validated = $request->validate([
+            'format' => ['required', 'string', 'in:'.implode(',', BuildStatisticsExport::FORMATS)],
+        ]);
+
+        $range = DateRange::fromRequest($request);
+
+        $export = ExportJob::query()->create([
+            'user_id' => $request->user()->id,
+            'type' => 'project.statistics',
+            'status' => 'queued',
+            'filters' => [
+                'project_id' => $project->id,
+                'format' => (string) $validated['format'],
+                'granularity' => (string) $request->input('granularity', 'day'),
+                'folder_id' => $request->integer('folder') ?: null,
+                'range' => $range->key,
+                'range_label' => $range->label,
+                'from' => $range->from->toDateString(),
+                'to' => $range->to->toDateString(),
+            ],
+        ]);
+
+        BuildStatisticsExportJob::dispatch($export);
+
+        return response()->json([
+            'id' => $export->id,
+            'status' => $export->status,
+            'format' => (string) $validated['format'],
+        ], 202);
     }
 
     /**
