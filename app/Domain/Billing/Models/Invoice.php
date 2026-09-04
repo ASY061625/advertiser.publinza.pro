@@ -9,13 +9,19 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property array<string, mixed>|null $billing_details
+ * @property Carbon|null $issued_at
+ * @property Carbon|null $paid_at
+ */
 class Invoice extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'number', 'subtotal_cents', 'tax_cents', 'total_cents',
+        'user_id', 'order_id', 'number', 'subtotal_cents', 'tax_cents', 'total_cents',
         'currency', 'status', 'billing_details', 'pdf_path', 'issued_at', 'paid_at',
     ];
 

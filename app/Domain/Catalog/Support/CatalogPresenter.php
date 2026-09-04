@@ -42,8 +42,7 @@ final class CatalogPresenter
         $used = $this->usedInProject($ids, $project);
 
         // The project's targeting, read once rather than per row.
-        $projectLanguages = $project?->languages->pluck('name', 'id')->all() ?? [];
-        $projectTopics = $project?->sensitiveTopics->pluck('name', 'slug')->all() ?? [];
+        $targeting = CompatibilityWarnings::targeting($project);
 
         return $websites->map(fn (Website $website): array => $this->row(
             $website,
@@ -51,14 +50,12 @@ final class CatalogPresenter
             isBlacklisted: isset($blacklisted[$website->id]),
             cartItemId: $inCart[$website->id] ?? null,
             isUsed: isset($used[$website->id]),
-            projectLanguages: $projectLanguages,
-            projectTopics: $projectTopics,
+            targeting: $targeting,
         ))->all();
     }
 
     /**
-     * @param  array<int, string>  $projectLanguages
-     * @param  array<string, string>  $projectTopics
+     * @param  array{languages: array<int, string>, topics: array<string, string>}  $targeting
      * @return array<string, mixed>
      */
     private function row(
@@ -67,8 +64,7 @@ final class CatalogPresenter
         bool $isBlacklisted,
         ?int $cartItemId,
         bool $isUsed,
-        array $projectLanguages,
-        array $projectTopics,
+        array $targeting,
     ): array {
         $metric = $website->latestMetric;
         $price = $website->priceFor(ServiceType::ArticlePlacement);
@@ -106,68 +102,8 @@ final class CatalogPresenter
             'isBlacklisted' => $isBlacklisted,
             'cartItemId' => $cartItemId,
             'usedInProject' => $isUsed,
-            'warnings' => $this->warnings($website, $projectLanguages, $projectTopics),
+            'warnings' => CompatibilityWarnings::for($website, $targeting),
         ];
-    }
-
-    /**
-     * Where a site and the project disagree.
-     *
-     * Informational, never exclusionary. A publisher who does not take the
-     * project's topic is still a site somebody might buy — for a different
-     * article, or because the topic is not in this one — and hiding the row
-     * would be the catalog deciding something the buyer is better placed to
-     * decide. The row says what is wrong and leaves it alone.
-     *
-     * @param  array<int, string>  $projectLanguages
-     * @param  array<string, string>  $projectTopics
-     * @return list<array{kind: string, message: string}>
-     */
-    private function warnings(Website $website, array $projectLanguages, array $projectTopics): array
-    {
-        $warnings = [];
-
-        if ($projectLanguages !== [] && ! in_array($website->primary_language_id, array_keys($projectLanguages), true)) {
-            $warnings[] = [
-                'kind' => 'language',
-                'message' => sprintf(
-                    'Publishes in %s. This project targets %s.',
-                    $website->primaryLanguage?->name ?? 'another language',
-                    $this->list(array_values($projectLanguages)),
-                ),
-            ];
-        }
-
-        $missing = [];
-
-        foreach ($projectTopics as $slug => $name) {
-            if (! $website->acceptsTopic($slug)) {
-                $missing[] = $name;
-            }
-        }
-
-        if ($missing !== []) {
-            $warnings[] = [
-                'kind' => 'topic',
-                'message' => 'Does not accept '.$this->list($missing).'.',
-            ];
-        }
-
-        return $warnings;
-    }
-
-    /**
-     * @param  list<string>  $items
-     */
-    private function list(array $items): string
-    {
-        if (count($items) <= 2) {
-            return implode(' and ', $items);
-        }
-
-        $last = array_pop($items);
-
-        return implode(', ', $items).' and '.$last;
     }
 
     /**

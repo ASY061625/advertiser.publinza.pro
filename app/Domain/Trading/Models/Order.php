@@ -15,10 +15,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * A checkout. Paying an order freezes its total against the advertiser's wallet
  * and creates one post per line.
+ *
+ * @property int $subtotal_cents
+ * @property int $discount_cents
+ * @property int $total_cents
+ * @property OrderStatus $status
+ * @property PaidFrom|null $paid_from
+ * @property Carbon|null $paid_at
+ * @property array<string, mixed>|null $billing_details
  */
 class Order extends Model
 {
@@ -30,11 +39,13 @@ class Order extends Model
         'order_number',
         'subtotal_cents',
         'discount_cents',
+        'promo_code_id',
         'total_cents',
         'currency',
         'status',
         'paid_from',
         'paid_at',
+        'billing_details',
     ];
 
     /**
@@ -52,6 +63,7 @@ class Order extends Model
             'status' => OrderStatus::class,
             'paid_from' => PaidFrom::class,
             'paid_at' => 'datetime',
+            'billing_details' => 'array',
         ];
     }
 

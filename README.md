@@ -1267,6 +1267,139 @@ element of a blob.
 
 ---
 
+## Cart — `/cart` and checkout — `/checkout`
+
+Eight columns of lines, four of money, and a three-step checkout that ends in one
+database transaction.
+
+### The live price wins, and the cart says when it moved
+
+`cart_items.unit_price_cents` is what a line was quoted when it was added. It is
+deliberately **not** what gets charged. A cart left open for a month would otherwise
+buy at last month's price, and a price that came down would still be billed at the
+old one — so the screen, the summary card and the order all read the publisher's
+current price, and the snapshot's only job is to let the line say "was $90.00 when
+you added it" instead of quietly changing the number.
+
+`CartPricer` is the single place either figure becomes money. The cart page, the
+header's cart preview and `PlaceOrder` all go through it, which is what stops the
+header quietly disagreeing with the cart about what the same lines cost. The fees
+follow the same rule: they are read off the live price row rather than frozen onto
+the line, so there is one figure to be right about per site instead of three copies
+that can drift apart.
+
+`PlaceOrder` re-reads prices *inside* its transaction, under `lockForUpdate`. That
+is the moment the money moves, and the current price is the only figure anybody has
+agreed to.
+
+### Grouped by project, because that is the unit people think in
+
+"Am I finished buying for the spring launch" is a question about a group, and a flat
+list of nineteen lines across four campaigns cannot answer it. The subtotal sits in
+the group header so a collapsed group still answers it.
+
+Lines with no project are not dropped — they are still money in the cart, and a
+buyer who cannot see them cannot fix them. They sort last and the header offers the
+fix.
+
+### Warnings are advisory, and dismissal sticks
+
+Two kinds. Compatibility (a refused topic, a language the project does not target)
+shares `CompatibilityWarnings` with the catalog row, so the two surfaces cannot word
+the same problem differently — which is how a buyer ends up thinking they are two
+problems. Duplication ("you already placed a post here 6 days ago") is one query for
+the whole cart, capped at 90 days: outside that window a repeat placement is an
+ordinary thing to want, and a strip that fires on every line is a strip nobody reads.
+
+Every warning offers **both** dismiss and remove, because only the buyer knows which
+applies — "does not accept crypto" might be irrelevant to this particular article,
+or it might be the reason to drop the line. Dismissal is stored on the line rather
+than in component state: a warning that reappears on every load is one people learn
+to scroll past, and by then the strip has stopped working for the ones that matter.
+
+The one warning with no dismiss is "the publisher withdrew this service". That line
+cannot be bought, so hiding the reason would leave somebody stuck at checkout with
+no explanation.
+
+### The shortfall is arithmetic the page can do
+
+When the balance does not cover the order the wallet panel names the exact gap —
+"You need $180.00 more" — and the top-up modal opens over the cart with that figure
+already in the field, rounded up to whole dollars. "Insufficient funds" at the end of
+a three-step checkout is where advertisers abandon orders; sending them to the
+billing page to work the number out themselves is how a cart becomes an abandoned
+cart.
+
+### Checkout is three steps over one URL
+
+The step is `?step=` rather than component state, so a refresh, the back button and a
+link pasted between two of the buyer's own devices all land where they were. Nothing
+is written outside the cart until the last step — the articles staged on step two
+live on the cart line, so abandoning here leaves a cart with the work already in it.
+
+**Review** is read-only on purpose. It exists to be checked, and a screen where every
+field is also an input invites re-configuring instead of reading. Its Article column
+is the buyer's first sight of how many of these they are on the hook to write.
+
+**Content** counts words against each publisher's own minimum, which is a real
+acceptance criterion — a 400-word draft against a 1,200-word minimum comes back
+rejected days later, and catching it here costs nothing. `.docx` is a zip of XML, so
+`ArticleText` reads `word/document.xml` with PHP's own zip extension rather than
+adding a document library for one field. There are three states, not two: "too short"
+is not "not started", and a buyer who pasted 400 words needs to be told which they
+are in. A draft that saves short keeps its editor open — closing it would be closing
+the one editor with work left in it.
+
+Lines the publisher writes are complete on arrival, which is what turns "twelve
+items" into "three to write".
+
+**Confirm** puts *what happens next* directly above the button: frozen not spent,
+released per verified link, refunded in full if a placement falls through. A
+marketplace that takes several hundred dollars and says nothing about when it leaves
+the account generates a support ticket per order.
+
+### One transaction, or none of it
+
+`PlaceOrder` does six things together: the order row, a post per line, the freeze in
+the wallet, the promo redemption, the invoice, and emptying the cart. Any subset is a
+state somebody unpicks by hand — money frozen against an order that does not exist,
+or an empty cart and no posts.
+
+A failure rolls all of it back and **the cart is untouched**. That matters more than
+the error message: an advertiser whose payment failed and whose cart also vanished
+has lost an hour of work to a problem that was not theirs.
+
+The notification is deliberately outside the transaction. Sent inside it, a mail
+server having a bad minute would roll back an order that was otherwise fine, and the
+mail could describe a transaction that later aborts.
+
+A post still waiting on the buyer's own article stays in `draft`. That is the whole
+of the rule — it does not consult what was chosen on the content step, because "I
+said I would do it later" and "there is no article here" are the same fact, and
+deriving the state from the article itself is the version that cannot disagree with
+what is stored.
+
+### Two bugs this surfaced
+
+**`preserveState: false` was eating the validation errors.** The promo field, the line
+editor and the article editor all render server-side errors, and remounting the
+component on the response threw them away before anything could show them — so a
+rejected promo code silently did nothing. Inertia replaces the page props either way,
+so the totals still refresh with the component preserved.
+
+**The header disagreed with the cart.** `ShellData` still summed
+`unit_price_cents`, so the cart dropdown could show a different total from the cart
+page for the same lines. It goes through `CartPricer` now, like everything else.
+
+### One thing deliberately not built
+
+Card and PayPal are presented for the shortfall but not wired to a processor. The
+wallet is the real payment path in this codebase and it is complete — freeze, charge,
+refund, all under a row lock — and stubbing a gateway would have added a second,
+fake money path beside a working one.
+
+---
+
 ## Layout
 
 ```

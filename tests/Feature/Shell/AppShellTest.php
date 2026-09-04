@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Billing\Models\Wallet;
 use App\Domain\Catalog\Models\Favorite;
 use App\Domain\Catalog\Models\Website;
+use App\Domain\Catalog\Models\WebsitePrice;
 use App\Domain\Messaging\Models\Conversation;
 use App\Domain\Messaging\Models\Message;
 use App\Domain\Projects\Models\Project;
@@ -69,12 +70,23 @@ it('counts the cart, favourites, unread conversations and unread changelog', fun
     $website = Website::factory()->create();
     $cart = Cart::query()->create(['user_id' => $user->id]);
 
+    WebsitePrice::factory()->create([
+        'website_id' => $website->id,
+        'service_type' => ServiceType::ArticlePlacement,
+        'price_cents' => 200_00,
+        'writing_fee_cents' => 40_00,
+        'express_fee_cents' => 0,
+    ]);
+
     CartItem::query()->create([
         'cart_id' => $cart->id,
         'website_id' => $website->id,
         'service_type' => ServiceType::ArticlePlacement,
         'content_mode' => ContentMode::PublisherWrites,
-        'unit_price_cents' => 24_000,
+        // What the line was quoted. The header shows the live price, not this
+        // one, so that it cannot disagree with the cart page about the same
+        // lines — see CartPricer.
+        'unit_price_cents' => 180_00,
     ]);
 
     Favorite::query()->create(['user_id' => $user->id, 'website_id' => $website->id]);
@@ -107,7 +119,9 @@ it('counts the cart, favourites, unread conversations and unread changelog', fun
             ->where('shell.counts.favorites', 1)
             ->where('shell.counts.conversations', 1)
             ->where('shell.counts.changelog', 1)
-            ->where('shell.cart.subtotalCents', 24_000),
+            // The live price plus the writing fee this line takes, not the
+            // $180 it was quoted at.
+            ->where('shell.cart.subtotalCents', 240_00),
         );
 });
 

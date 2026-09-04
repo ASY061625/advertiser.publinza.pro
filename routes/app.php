@@ -11,6 +11,7 @@ use App\Http\Controllers\Advertiser\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\Advertiser\BillingController;
 use App\Http\Controllers\Advertiser\CartController;
 use App\Http\Controllers\Advertiser\CatalogController;
+use App\Http\Controllers\Advertiser\CheckoutController;
 use App\Http\Controllers\Advertiser\CompetitorController;
 use App\Http\Controllers\Advertiser\DashboardController;
 use App\Http\Controllers\Advertiser\ExportController;
@@ -148,9 +149,30 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('/sites/{website}/wishlist', [SiteListController::class, 'addToWishlist'])
         ->name('sites.wishlist');
 
+    /*
+    | The cart. Literal segments come before {website} and {item}, or "promo"
+    | and "bulk" are resolved as a site slug and a line id.
+    */
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/bulk', [CartController::class, 'bulk'])->name('cart.bulk');
+    Route::post('/cart/promo', [CartController::class, 'applyPromo'])->name('cart.promo.store');
+    Route::delete('/cart/promo', [CartController::class, 'removePromo'])->name('cart.promo.destroy');
     Route::post('/cart/{website}', [CartController::class, 'store'])->name('cart.store');
+    Route::patch('/cart/{item}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{item}', [CartController::class, 'destroy'])->name('cart.destroy');
-    Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+    Route::post('/cart/{item}/dismiss', [CartController::class, 'dismissWarning'])->name('cart.dismiss');
+
+    /*
+    | Checkout. The step is a query parameter on /checkout, so a refresh and a
+    | back button both land where the buyer was.
+    */
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::post('/checkout/{item}/article', [CheckoutController::class, 'saveArticle'])->name('checkout.article.store');
+    Route::delete('/checkout/{item}/article', [CheckoutController::class, 'clearArticle'])
+        ->name('checkout.article.destroy');
+    Route::get('/checkout/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
+    Route::get('/checkout/{order}/invoice', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
 
     // Literal segments before the {project} wildcard, or "view" is resolved
     // as a project id.

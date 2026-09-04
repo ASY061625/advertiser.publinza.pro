@@ -10,17 +10,30 @@ use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectFolder;
 use App\Domain\Trading\Enums\ContentMode;
 use App\Domain\Trading\Enums\ServiceType;
+use Database\Factories\CartItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A line in the cart. `unit_price_cents` is snapshotted when the line is added,
- * so a publisher raising their price mid-session cannot change what the
- * advertiser was quoted.
+ * A line in the cart.
+ *
+ * `unit_price_cents` is what this line was quoted when it was added. It is not
+ * what gets charged: the live price wins, at checkout and on the screen, and
+ * the snapshot exists so the cart can say "this was $180 when you added it"
+ * rather than silently changing the number. See CartPricer, which is the only
+ * place either figure is turned into money.
+ *
+ * @property ServiceType $service_type
+ * @property ContentMode $content_mode
+ * @property int $unit_price_cents
+ * @property bool $express
+ * @property array<int, string>|null $dismissed_warnings
+ * @property int|null $article_word_count
  */
 class CartItem extends Model
 {
+    /** @use HasFactory<CartItemFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -33,7 +46,13 @@ class CartItem extends Model
         'anchor_text',
         'target_url',
         'unit_price_cents',
+        'express',
         'addons',
+        'dismissed_warnings',
+        'article_title',
+        'article_body_html',
+        'article_word_count',
+        'article_file_path',
     ];
 
     /**
@@ -46,8 +65,22 @@ class CartItem extends Model
             'content_mode' => ContentMode::class,
             'unit_price_cents' => 'integer',
             'unit_price' => MoneyCast::class,
+            'express' => 'boolean',
             'addons' => 'array',
+            'dismissed_warnings' => 'array',
+            'article_word_count' => 'integer',
         ];
+    }
+
+    /** Whether the advertiser has already staged an article for this line. */
+    public function hasArticle(): bool
+    {
+        return $this->article_word_count !== null;
+    }
+
+    public function hasDismissed(string $kind): bool
+    {
+        return in_array($kind, $this->dismissed_warnings ?? [], true);
     }
 
     /**

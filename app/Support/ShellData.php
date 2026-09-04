@@ -10,6 +10,8 @@ use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Models\Project;
 use App\Domain\System\Models\ChangelogEntry;
 use App\Domain\Trading\Models\Cart;
+use App\Domain\Trading\Models\CartItem;
+use App\Domain\Trading\Support\CartPricer;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -31,13 +33,18 @@ final class ShellData
 
     private const PREVIEW_LIMIT = 5;
 
+    public function __construct(private readonly CartPricer $pricer) {}
+
     /**
      * @return array<string, mixed>
      */
     public function forUser(User $user): array
     {
+        // The prices come with it: the preview's subtotal has to be the live
+        // one, or the header quietly disagrees with the cart page about what
+        // the same lines cost.
         $cart = Cart::query()
-            ->with(['items.website:id,domain', 'items.project:id,name'])
+            ->with(['items.website:id,domain', 'items.website.prices', 'items.project:id,name'])
             ->firstWhere('user_id', $user->id);
 
         $wallet = $user->wallet;
@@ -91,18 +98,21 @@ final class ShellData
             return ['items' => [], 'subtotalCents' => 0, 'moreCount' => 0];
         }
 
-        $items = $cart->items->take(self::PREVIEW_LIMIT)->map(fn ($item): array => [
+        $items = $cart->items->take(self::PREVIEW_LIMIT)->map(fn (CartItem $item): array => [
             'id' => $item->id,
             'domain' => $item->website?->domain ?? '',
             'project' => $item->project?->name,
-            'priceCents' => $item->unit_price_cents,
+            // The live price with its fees, from the same place the cart page
+            // and the order read it. The snapshot on the line is what it was
+            // quoted, not what it costs — see CartPricer.
+            'priceCents' => $this->pricer->total($item)->cents,
         ])->values()->all();
 
         return [
             'items' => $items,
             // The subtotal is the whole cart, not just the preview — a total
             // that only counts five lines would be worse than no total.
-            'subtotalCents' => (int) $cart->items->sum('unit_price_cents'),
+            'subtotalCents' => $this->pricer->sum($cart->items)->cents,
             'moreCount' => max(0, $cart->items->count() - self::PREVIEW_LIMIT),
         ];
     }

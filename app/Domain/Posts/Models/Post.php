@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\DB;
  * @property PostStatus $status
  * @property int $price_cents
  * @property Carbon|null $published_at
+ * @property Carbon|null $deadline_at
+ * @property Carbon|null $frozen_until
  */
 class Post extends Model
 {

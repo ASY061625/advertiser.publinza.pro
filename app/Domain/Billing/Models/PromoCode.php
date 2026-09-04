@@ -9,9 +9,19 @@ use App\Domain\Billing\DTOs\Money;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * Either a percentage or a flat amount off, never both.
+ *
+ * @property int|null $percent_off
+ * @property int|null $amount_off_cents
+ * @property int $minimum_spend_cents
+ * @property int|null $max_redemptions
+ * @property int $redemptions_count
+ * @property Carbon|null $starts_at
+ * @property Carbon|null $ends_at
+ * @property bool $is_active
  */
 class PromoCode extends Model
 {

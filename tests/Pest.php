@@ -5,7 +5,10 @@ declare(strict_types=1);
 use App\Domain\Catalog\Models\Website;
 use App\Domain\Catalog\Models\WebsiteMetric;
 use App\Domain\Catalog\Models\WebsitePrice;
+use App\Domain\Trading\Enums\ContentMode;
 use App\Domain\Trading\Enums\ServiceType;
+use App\Domain\Trading\Models\Cart;
+use App\Domain\Trading\Models\CartItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -59,6 +62,45 @@ function site(array $attributes = [], array $metrics = [], array $price = []): W
     WebsitePrice::factory()->create($price + [
         'website_id' => $website->id,
         'service_type' => ServiceType::ArticlePlacement,
+    ]);
+
+    return $website->fresh();
+}
+
+/**
+ * A cart with one line on it. Named arguments keep each test's intent legible
+ * against a line with a dozen columns.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function line(User $user, Website $website, array $attributes = []): CartItem
+{
+    $cart = Cart::query()->firstOrCreate(['user_id' => $user->id]);
+
+    return CartItem::query()->create($attributes + [
+        'cart_id' => $cart->id,
+        'website_id' => $website->id,
+        'service_type' => ServiceType::ArticlePlacement,
+        'content_mode' => ContentMode::AdvertiserProvides,
+        'unit_price_cents' => $website->priceFor(ServiceType::ArticlePlacement)?->price_cents ?? 0,
+    ]);
+}
+
+/**
+ * A site with a known price and both optional fees.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function priced(int $price, int $writing = 0, int $express = 0, array $attributes = []): Website
+{
+    $website = Website::factory()->create($attributes + ['is_active' => true]);
+
+    WebsitePrice::factory()->create([
+        'website_id' => $website->id,
+        'service_type' => ServiceType::ArticlePlacement,
+        'price_cents' => $price,
+        'writing_fee_cents' => $writing,
+        'express_fee_cents' => $express,
     ]);
 
     return $website->fresh();

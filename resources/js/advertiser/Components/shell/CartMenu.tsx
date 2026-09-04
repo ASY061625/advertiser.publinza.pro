@@ -79,7 +79,7 @@ export function CartMenu({ cart, count }: { cart: Shell['cart']; count: number }
                                     View cart
                                 </Link>
                                 <Link
-                                    href="/cart/checkout"
+                                    href="/checkout"
                                     onClick={() => setOpen(false)}
                                     className="flex h-8 flex-1 items-center justify-center rounded-button bg-brand font-sora text-sm font-medium text-white hover:bg-brand-hover"
                                 >
