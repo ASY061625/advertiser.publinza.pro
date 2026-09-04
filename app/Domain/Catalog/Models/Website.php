@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Laravel\Scout\Searchable;
 
 /**
@@ -23,6 +24,11 @@ use Laravel\Scout\Searchable;
  * @property LinkType $link_type
  * @property array<int, string>|null $accepts_sensitive_topics
  * @property int $publication_period_hours
+ * @property bool $marks_sponsored
+ * @property int $link_guarantee_months
+ * @property bool $accepts_images
+ * @property bool $accepts_embeds
+ * @property Carbon|null $domain_registered_at
  */
 class Website extends Model
 {
@@ -50,6 +56,11 @@ class Website extends Model
         'min_words',
         'sample_url',
         'guidelines',
+        'marks_sponsored',
+        'link_guarantee_months',
+        'accepts_images',
+        'accepts_embeds',
+        'domain_registered_at',
     ];
 
     /**
@@ -60,6 +71,11 @@ class Website extends Model
         return [
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
+            'marks_sponsored' => 'boolean',
+            'accepts_images' => 'boolean',
+            'accepts_embeds' => 'boolean',
+            'link_guarantee_months' => 'integer',
+            'domain_registered_at' => 'date',
             'accepts_sensitive_topics' => 'array',
             'link_type' => LinkType::class,
             'publication_period_hours' => 'integer',
@@ -192,6 +208,14 @@ class Website extends Model
     public function prices(): HasMany
     {
         return $this->hasMany(WebsitePrice::class);
+    }
+
+    /**
+     * @return HasMany<WebsiteSamplePost, $this>
+     */
+    public function samplePosts(): HasMany
+    {
+        return $this->hasMany(WebsiteSamplePost::class)->orderBy('sort_order')->orderByDesc('published_at');
     }
 
     /**

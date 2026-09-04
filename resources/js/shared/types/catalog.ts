@@ -30,15 +30,67 @@ export interface CatalogRow {
     warnings: CatalogWarning[];
 }
 
+export interface MetricTile {
+    key: string;
+    label: string;
+    /** Null where the measure has never been recorded. Not the same as zero. */
+    value: number | null;
+    format: 'compact' | 'plain' | 'money' | 'age';
+    /** Twelve monthly points, or null where there is no trend to draw. */
+    sparkline: number[] | null;
+    source: string | null;
+    fetchedAt: string | null;
+}
+
+export interface PlacementTerms {
+    publicationLabel: string;
+    linkType: 'dofollow' | 'nofollow';
+    linksAllowed: number;
+    maxLinks: number;
+    minWords: number;
+    marksSponsored: boolean;
+    /** Zero means no guarantee — a real answer, not a missing one. */
+    linkGuaranteeMonths: number;
+    acceptsImages: boolean;
+    acceptsEmbeds: boolean;
+}
+
+export interface SiteService {
+    type: string;
+    label: string;
+    priceCents: number;
+    writingFeeCents: number;
+    expressFeeCents: number;
+}
+
+export interface SitePlacement {
+    id: number;
+    project: string;
+    anchorText: string | null;
+    status: string;
+    statusLabel: string;
+    badge: string;
+    publishedUrl: string | null;
+    publishedAt: string | null;
+}
+
 export interface CatalogSiteDetail extends CatalogRow {
+    homepage: string;
     description: string | null;
     guidelines: string | null;
-    sampleUrl: string | null;
-    minWords: number;
-    maxLinks: number;
-    linksAllowed: number;
-    acceptsTopics: string[];
-    services: { type: string; label: string; priceCents: number; writingFeeCents: number }[];
+    metrics: MetricTile[];
+    trafficByCountry: { code: string; percent: number }[];
+    terms: PlacementTerms;
+    topics: { accepted: { name: string; slug: string }[]; refused: { name: string; slug: string }[] };
+    samplePosts: { title: string; url: string; publishedAt: string | null }[];
+    services: SiteService[];
+    /** Placements this advertiser has already made here. */
+    myHistory: SitePlacement[];
+}
+
+export interface BuyingConfig {
+    folders: { id: number; name: string }[];
+    landingPages: { id: number; folderId: number | null; anchorText: string; url: string }[];
 }
 
 export interface FacetOption {

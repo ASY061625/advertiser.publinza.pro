@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\DB;
  *
  * @property PostStatus $status
  * @property int $price_cents
+ * @property Carbon|null $published_at
  */
 class Post extends Model
 {

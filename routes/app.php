@@ -120,9 +120,20 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 
     Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
 
-    // JSON, for the detail drawer. The catalog stays on one page — opening a
-    // site should not cost the filters, the scroll position or the page.
-    Route::get('/catalog/{website}', [CatalogController::class, 'show'])->name('catalog.show');
+    /*
+    | One address, two renderings. Asked for as JSON it answers the drawer;
+    | visited directly it renders the whole website as a page. That is what
+    | makes a drawer deep-linkable without building it twice.
+    |
+    | Above the /catalog/{anything} shapes below it, so "website" is never read
+    | as a slug.
+    */
+    Route::get('/catalog/website/{website}', [CatalogController::class, 'show'])->name('catalog.website');
+
+    // Reporting a problem with a site. Throttled: it opens a conversation.
+    Route::post('/sites/{website}/report', [SiteListController::class, 'report'])
+        ->middleware('throttle:10,1')
+        ->name('sites.report');
 
     Route::post('/catalog/view', [CatalogController::class, 'view'])->name('catalog.view');
 

@@ -1177,6 +1177,96 @@ components.
 
 ---
 
+## Website detail — `/catalog/website/{slug}`
+
+One website, at 620px. It opens as a right-hand drawer from any catalog row and renders as a
+full page when the URL is visited directly.
+
+### One address, two answers
+
+`GET /catalog/website/{slug}` is a single route that reads `wantsJson()`. Asked for as JSON —
+by the drawer, from a row — it returns the payload. Visited by a browser it returns
+`Catalog/Website`. `GetWebsiteDetail` builds that payload once for both, so the drawer is
+deep-linkable without a second implementation of it, and a link pasted into Slack opens the
+same thing the person who sent it was looking at.
+
+The payload starts as `CatalogPresenter`'s row and adds to it (`$row + [...]`), so the header
+and the buy button cannot disagree with the row that opened them. The drawer then merges the
+live row back over the fetched payload: the payload is fetched once when the drawer opens, but
+the row is re-fetched by Inertia after every favourite, blacklist and cart change on the page
+behind it. Without the merge the footer keeps offering "Add to cart" for something already in
+the cart.
+
+### Every metric carries its own date
+
+Nine tiles, three across, and each one names its source and when it was fetched. One date at
+the foot of the grid would imply the nine were measured together, and they are not — a domain
+rating is one vendor's crawl and a traffic figure is another vendor's estimate, often weeks
+apart. A buyer comparing two sites on DR needs to know both scores came from the same place on
+roughly the same day.
+
+A measure nobody has recorded still gets a tile, with a dash and "Not measured". Dropping it
+would make the grid a different shape per site and lose the fact that nobody has looked. Domain
+age is the one tile with no vendor and no sparkline: it is arithmetic on a registration date,
+and saying so is more useful than implying a crawl.
+
+Sparklines are twelve monthly points, one per month — `website_metrics` accumulates rather than
+updates, so the newest row in each month wins. A series with fewer than two points is drawn as
+nothing: one point is not a trend, and a flat line reads as one. There is no hover tooltip on a
+68×20 plot; what replaces it is an accessible summary in words ("Monthly traffic, up 34% over
+12 months"), which serves a screen reader, a keyboard and a touch screen equally.
+
+Country shares are percentages of all measured traffic, not of the eight shown — so eight bars
+adding to 96% can say "the remaining 4% comes from elsewhere" instead of implying the world is
+eight countries.
+
+### Things that are answers, not gaps
+
+`link_guarantee_months = 0` is "no guarantee", printed as those words. A dash there would read
+as though nobody asked. The topic chips show both halves — accepted in teal, refused struck
+through — because "refuses gambling" and "nobody asked about gambling" are opposite answers for
+anyone shopping on it, and a list of only what is accepted cannot tell them apart.
+
+### The buy popover configures before it adds
+
+"Add to cart" opens a 340px popover: service, content mode, folder, landing page, express. Five
+choices, and every one of them changes either the price or what the publisher receives. The
+running total is recomputed in the popover's own footer, because the two fees are optional and a
+buyer choosing between them is choosing between prices. The writing fee is printed on the radio
+option that incurs it, not in a footnote — that is the moment the choice is made.
+
+Choosing a folder narrows the landing pages to that folder's. A folder chosen and then offered
+another folder's URLs is how an order ends up pointing somewhere nobody meant.
+
+### Keyboard
+
+Escape closes, Tab is trapped, and **J** and **K** step to the next and previous website in the
+current filtered result set without closing the drawer. Comparing four candidates is the actual
+job here, and doing it through open-read-close costs three clicks a site and loses your place in
+the list every time. Both keys are ignored while focus is in a field — they are letters before
+they are shortcuts, and typing "jk" into the report box should not navigate away mid-sentence.
+
+### Two bugs this surfaced
+
+**A portalled menu closed the drawer under it.** Clicking any item in the overflow menu — which
+`Dropdown` portals to the body — dismissed the drawer, because the menu is outside the drawer's
+own DOM and so counted as an outside press. `useDismiss` now answers an outside press only when
+it is the topmost overlay, which is the rule it already applied to Escape. Nested overlays close
+one at a time, in order.
+
+**A language has no flag.** The header rendered `flagFor(site.language.code)`, and the
+regional-indicator pair for "en" is not a country — it draws an empty box. Languages get their
+code in a chip, the way the catalog table already showed them; countries, which are countries,
+keep their flag.
+
+### One table rather than one column
+
+`website_sample_posts` is a table, not a JSON array on `websites`. A JSON array would make "add
+one more sample" a read-modify-write of the whole set, and there is no way to order or expire an
+element of a blob.
+
+---
+
 ## Layout
 
 ```

@@ -123,7 +123,7 @@ export default {
                 drawer: '480px',
             },
 
-            maxWidth: { content: '1440px', drawer: '480px' },
+            maxWidth: { content: '1440px', drawer: '480px', 'drawer-lg': '620px' },
 
             /*
              * One extra breakpoint, for one thing: the catalog's filter rail.

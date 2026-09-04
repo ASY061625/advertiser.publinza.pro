@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Advertiser;
 
 use App\Domain\Catalog\Actions\GetCatalogFacets;
 use App\Domain\Catalog\Actions\GetCatalogRanges;
+use App\Domain\Catalog\Actions\GetWebsiteDetail;
 use App\Domain\Catalog\Actions\SearchCatalog;
 use App\Domain\Catalog\Actions\SuggestRelaxations;
 use App\Domain\Catalog\DTOs\CatalogFilters;
@@ -14,6 +15,7 @@ use App\Domain\Catalog\Models\SensitiveTopic;
 use App\Domain\Catalog\Models\Website;
 use App\Domain\Catalog\Support\CatalogPresenter;
 use App\Domain\Projects\Enums\ProjectStatus;
+use App\Domain\Projects\Models\LandingPage;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Trading\Enums\ServiceType;
 use App\Http\Controllers\Controller;
@@ -96,38 +98,84 @@ class CatalogController extends Controller
     }
 
     /**
-     * One site, as JSON, for the detail drawer.
+     * One website, at `/catalog/website/{slug}`.
      *
-     * Fetched on open rather than shipped with every row: the guidelines alone
-     * are a paragraph per site, and a page of a hundred rows would carry a
-     * hundred of them for the one a buyer opens.
+     * The same address answers two ways, deliberately. Asked for as JSON — by
+     * the drawer, from a catalog row — it returns the payload. Visited
+     * directly it renders the whole thing as a page.
+     *
+     * That is what makes the drawer deep-linkable without a second
+     * implementation of it: one URL, one payload, and the only difference is
+     * whether it arrives inside a panel or inside a page.
      */
-    public function show(Request $request, Website $website, CatalogPresenter $presenter): JsonResponse
-    {
+    public function show(
+        Request $request,
+        Website $website,
+        GetWebsiteDetail $detail,
+        GetCatalogRanges $ranges,
+    ): JsonResponse|Response {
         $this->authorize('view', $website);
 
         $user = $request->user();
         $project = $this->project($user, $request->integer('project') ?: null);
 
-        $website->load(['category', 'primaryLanguage', 'country', 'latestMetric', 'prices']);
+        $payload = $detail->handle($website, $user, $project);
 
-        $row = $presenter->handle([$website], $user->id, $project)[0] ?? [];
+        if ($request->wantsJson()) {
+            return response()->json($payload + ['buying' => $this->buyingConfig($project)]);
+        }
 
-        return response()->json($row + [
-            'description' => $website->description,
-            'guidelines' => $website->guidelines,
-            'sampleUrl' => $website->sample_url,
-            'minWords' => $website->min_words,
-            'maxLinks' => $website->max_links,
-            'linksAllowed' => $website->links_allowed,
-            'acceptsTopics' => $website->accepts_sensitive_topics ?? [],
-            'services' => $website->prices->map(static fn ($price): array => [
-                'type' => $price->service_type->value,
-                'label' => $price->service_type->label(),
-                'priceCents' => $price->price_cents,
-                'writingFeeCents' => $price->writing_fee_cents,
-            ])->values()->all(),
+        return inertia('Catalog/Website', [
+            'site' => $payload,
+            // The quant-bars and sparklines scale against the whole catalog,
+            // which the standalone page has no other way to know.
+            'ranges' => $ranges->handle()->toArray(),
+            'buying' => $this->buyingConfig($project),
+            'project' => $project === null ? null : [
+                'id' => $project->id,
+                'name' => $project->name,
+                'color' => $project->color,
+            ],
+            'projects' => $this->projects($user),
         ]);
+    }
+
+    /**
+     * What the add-to-cart popover needs to configure an order.
+     *
+     * Empty in browse mode, because there is nothing to configure an order
+     * against — which is also what disables the button.
+     *
+     * @return array<string, mixed>
+     */
+    private function buyingConfig(?Project $project): array
+    {
+        if ($project === null) {
+            return ['folders' => [], 'landingPages' => []];
+        }
+
+        return [
+            'folders' => $project->folders()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['id', 'name'])
+                ->all(),
+            // The project's saved anchor/URL pairs. The popover offers these
+            // first and a manual entry second: a buyer who has already written
+            // down what they are promoting should not retype it per order.
+            'landingPages' => LandingPage::query()
+                ->where('project_id', $project->id)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['id', 'folder_id', 'anchor_text', 'url'])
+                ->map(static fn (LandingPage $page): array => [
+                    'id' => $page->id,
+                    'folderId' => $page->folder_id,
+                    'anchorText' => $page->anchor_text,
+                    'url' => $page->url,
+                ])
+                ->all(),
+        ];
     }
 
     /** Remembers table or cards across visits, and across browsers. */

@@ -166,6 +166,18 @@ export const HeartIcon = (p: IconProps) => (
         <path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20Z" />
     </Svg>
 );
+export const ExternalLinkIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M14 4h6v6M20 4l-9 9" />
+        <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+    </Svg>
+);
+export const CopyIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <rect x="9" y="9" width="11" height="11" rx="2" />
+        <path d="M5 15a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2" />
+    </Svg>
+);
 export const ChatIcon = (p: IconProps) => (
     <Svg {...p}>
         <path d="M21 12a7.5 7.5 0 0 1-7.5 7.5H8l-4 2.5v-4.4A7.5 7.5 0 0 1 11.5 4.5h2A7.5 7.5 0 0 1 21 12Z" />

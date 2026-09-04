@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '../../Layouts/AppShell';
 import { Button, Drawer, EmptyState, SearchIcon } from '@shared/ui';
 import { number } from '@shared/lib/format';
@@ -58,7 +58,10 @@ export default function CatalogIndex({
     projects,
 }: Props) {
     const { filters: state, apply, applyDebounced, clear } = useCatalogFilters(filters);
-    const [drawerFor, setDrawerFor] = useState<CatalogRow | null>(null);
+    // An index rather than the row itself: J and K step through the loaded
+    // result set, and "which one of these is open" is the only state that
+    // survives a step.
+    const [drawerIndex, setDrawerIndex] = useState<number | null>(null);
     const [railOpen, setRailOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -76,6 +79,13 @@ export default function CatalogIndex({
             finished();
         };
     }, []);
+
+    // The rows are re-fetched on every filter change, so the open row is found
+    // by slug rather than held as an object that would go stale.
+    const openDetail = useCallback(
+        (row: CatalogRow) => setDrawerIndex(sites.findIndex((entry) => entry.slug === row.slug)),
+        [sites],
+    );
 
     const appliedCount = useMemo(() => countApplied(state), [state]);
     const view = state.view ?? 'table';
@@ -130,7 +140,7 @@ export default function CatalogIndex({
                                 ranges={ranges}
                                 projectId={project?.id ?? null}
                                 loading={loading}
-                                onOpenDetail={setDrawerFor}
+                                onOpenDetail={openDetail}
                             />
                         ) : (
                             <CatalogTable
@@ -138,7 +148,7 @@ export default function CatalogIndex({
                                 ranges={ranges}
                                 projectId={project?.id ?? null}
                                 loading={loading}
-                                onOpenDetail={setDrawerFor}
+                                onOpenDetail={openDetail}
                             />
                         )}
 
@@ -154,10 +164,12 @@ export default function CatalogIndex({
             </Drawer>
 
             <SiteDrawer
-                site={drawerFor}
+                sites={sites}
+                index={drawerIndex}
                 projectId={project?.id ?? null}
                 ranges={ranges}
-                onClose={() => setDrawerFor(null)}
+                onNavigate={setDrawerIndex}
+                onClose={() => setDrawerIndex(null)}
             />
         </AppShell>
     );

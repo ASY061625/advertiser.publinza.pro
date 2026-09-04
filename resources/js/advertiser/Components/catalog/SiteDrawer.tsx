@@ -1,32 +1,51 @@
-import { useEffect, useState } from 'react';
-import { Alert, Drawer, QuantBar, Skeleton } from '@shared/ui';
-import { money, number } from '@shared/lib/format';
-import type { CatalogRangeSet, CatalogRow, CatalogSiteDetail } from '@shared/types/catalog';
-import { flagFor } from './flags';
-import { SiteActions } from './SiteActions';
+import { useCallback, useEffect, useState } from 'react';
+import { Button, CartIcon, ChevronDownIcon, ChevronUpIcon, Drawer, IconButton, Skeleton } from '@shared/ui';
+import type { BuyingConfig, CatalogRangeSet, CatalogRow, CatalogSiteDetail } from '@shared/types/catalog';
+import { BuyBar } from './website/BuyBar';
+import { SiteHeader } from './website/SiteHeader';
+import { WebsiteDetail } from './website/WebsiteDetail';
 
 interface Props {
-    /** The row that was clicked, or null when the drawer is shut. */
-    site: CatalogRow | null;
+    /** The whole loaded result set, so J and K have somewhere to go. */
+    sites: CatalogRow[];
+    /** Which of them is open, or null when the drawer is shut. */
+    index: number | null;
     projectId: number | null;
     ranges: CatalogRangeSet;
+    onNavigate: (index: number) => void;
     onClose: () => void;
 }
+
+const EMPTY: BuyingConfig = { folders: [], landingPages: [] };
 
 /**
  * One site, opened from a row.
  *
- * The row is already on the client, so the drawer paints its headline
- * immediately and fills in the rest — guidelines, the service list, the sample
- * post — when the fetch lands. Waiting for the whole thing before showing
- * anything would put a spinner over facts the page already had.
+ * The row is already on the client, so the header paints immediately and the
+ * body fills in when the fetch lands. Waiting for the whole payload before
+ * showing anything would put a spinner over facts the page already had.
+ *
+ * J and K move through the result set without closing, because comparing four
+ * candidate sites is the actual job here and doing it through open-read-close
+ * costs three clicks a site and loses your place in the list every time.
  */
-export function SiteDrawer({ site, projectId, ranges, onClose }: Props) {
+export function SiteDrawer({ sites, index, projectId, ranges, onNavigate, onClose }: Props) {
     const [detail, setDetail] = useState<CatalogSiteDetail | null>(null);
+    const [buying, setBuying] = useState<BuyingConfig>(EMPTY);
     const [failed, setFailed] = useState(false);
 
+    const site = index === null ? null : (sites[index] ?? null);
+    const slug = site?.slug ?? null;
+
+    // The row wins over the fetched payload wherever they overlap. The payload
+    // is fetched once when the drawer opens; the row is re-fetched by Inertia
+    // after every favourite, blacklist and cart change on the page behind it —
+    // so without this the footer would still offer "Add to cart" for something
+    // already in the cart.
+    const merged = detail === null || site === null ? null : { ...detail, ...site };
+
     useEffect(() => {
-        if (site === null) return;
+        if (slug === null) return;
 
         setDetail(null);
         setFailed(false);
@@ -34,12 +53,15 @@ export function SiteDrawer({ site, projectId, ranges, onClose }: Props) {
         const controller = new AbortController();
         const query = projectId === null ? '' : `?project=${projectId}`;
 
-        fetch(`/catalog/${site.slug}${query}`, {
+        fetch(`/catalog/website/${slug}${query}`, {
             headers: { Accept: 'application/json' },
             signal: controller.signal,
         })
             .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-            .then((data: CatalogSiteDetail) => setDetail(data))
+            .then((data: CatalogSiteDetail & { buying: BuyingConfig }) => {
+                setDetail(data);
+                setBuying(data.buying ?? EMPTY);
+            })
             .catch((reason: unknown) => {
                 if (reason instanceof DOMException && reason.name === 'AbortError') return;
 
@@ -47,149 +69,120 @@ export function SiteDrawer({ site, projectId, ranges, onClose }: Props) {
             });
 
         return () => controller.abort();
-    }, [projectId, site]);
+    }, [projectId, slug]);
 
-    if (site === null) return null;
+    const step = useCallback(
+        (delta: number) => {
+            if (index === null) return;
+
+            const next = index + delta;
+
+            if (next >= 0 && next < sites.length) onNavigate(next);
+        },
+        [index, onNavigate, sites.length],
+    );
+
+    useEffect(() => {
+        if (index === null) return;
+
+        function onKeyDown(event: KeyboardEvent) {
+            // J and K are letters before they are shortcuts. Inside the report
+            // dialog or the buy popover's anchor field they have to stay
+            // letters, or typing "jk" navigates away mid-sentence.
+            if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target)) return;
+
+            if (event.key === 'j' || event.key === 'J') {
+                event.preventDefault();
+                step(1);
+            } else if (event.key === 'k' || event.key === 'K') {
+                event.preventDefault();
+                step(-1);
+            }
+        }
+
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [index, step]);
+
+    if (site === null || index === null) return null;
 
     return (
         <Drawer
             open
+            size="lg"
             onClose={onClose}
             title={site.domain}
-            description={site.title}
+            header={
+                <SiteHeader
+                    site={merged ?? site}
+                    aside={
+                        sites.length > 1 && (
+                            <div className="flex shrink-0 items-center gap-1">
+                                <IconButton
+                                    label="Previous website (K)"
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={index === 0}
+                                    onClick={() => step(-1)}
+                                    icon={<ChevronUpIcon size={14} />}
+                                />
+                                <span className="num w-10 text-center text-xs text-ink-500">
+                                    {index + 1}/{sites.length}
+                                </span>
+                                <IconButton
+                                    label="Next website (J)"
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={index === sites.length - 1}
+                                    onClick={() => step(1)}
+                                    icon={<ChevronDownIcon size={14} />}
+                                />
+                            </div>
+                        )
+                    }
+                />
+            }
             footer={
-                <SiteActions site={detail ?? site} projectId={projectId} onOpenDetail={() => undefined} size="md" />
+                merged === null ? (
+                    <Button disabled loading={!failed}>
+                        <CartIcon size={14} />
+                        Add to cart
+                    </Button>
+                ) : (
+                    <BuyBar site={merged} projectId={projectId} buying={buying} />
+                )
             }
         >
-            <div className="flex flex-col gap-5">
-                {site.warnings.length > 0 && (
-                    <Alert tone="warning" title="Worth checking against this project">
-                        <ul className="flex list-inside list-disc flex-col gap-0.5">
-                            {site.warnings.map((warning) => (
-                                <li key={warning.kind}>{warning.message}</li>
-                            ))}
-                        </ul>
-                    </Alert>
-                )}
-
-                <dl className="grid grid-cols-2 gap-3">
-                    <Fact label="Category" value={site.category} />
-                    <Fact label="Language" value={site.language.name} />
-                    <Fact
-                        label="Country"
-                        value={`${site.country.code ? `${flagFor(site.country.code)} ` : ''}${site.country.name}`}
-                    />
-                    <Fact label="Published in" value={site.publicationLabel} />
-                    <Fact label="Link type" value={site.linkType === 'dofollow' ? 'Dofollow' : 'Nofollow'} />
-                    <Fact
-                        label="Spam score"
-                        value={site.spamScore === null ? 'Not measured' : String(site.spamScore)}
-                    />
-                </dl>
-
-                <section>
-                    <h3 className="mb-2 font-sora text-sm font-semibold text-ink-900">Metrics</h3>
-                    <dl className="flex flex-col gap-2">
-                        {(
-                            [
-                                ['Monthly traffic', site.traffic, ranges.traffic, false],
-                                ['Domain Rating', site.domainRating, ranges.domainRating, true],
-                                ['Domain Authority', site.domainAuthority, ranges.domainAuthority, true],
-                            ] as const
-                        ).map(([label, value, range, exact]) => (
-                            <div key={label} className="flex items-center gap-3">
-                                <dt className="w-36 shrink-0 text-sm text-ink-500">{label}</dt>
-                                <dd className="min-w-0 flex-1">
-                                    {value === null ? (
-                                        <span className="text-sm text-ink-500">Not measured</span>
-                                    ) : (
-                                        <QuantBar
-                                            value={value}
-                                            range={range}
-                                            format={exact ? String : undefined}
-                                            className="!items-start"
-                                        />
-                                    )}
-                                </dd>
-                            </div>
-                        ))}
-                    </dl>
-                </section>
-
-                {failed ? (
-                    <p className="text-base text-danger">
-                        The rest of this site’s details could not be loaded. Close the drawer and try again.
-                    </p>
-                ) : detail === null ? (
-                    <div className="flex flex-col gap-2">
-                        {Array.from({ length: 5 }, (_, index) => (
-                            <Skeleton key={index} className="h-4 w-full" />
-                        ))}
-                    </div>
-                ) : (
-                    <>
-                        <section>
-                            <h3 className="mb-2 font-sora text-sm font-semibold text-ink-900">Services</h3>
-                            <ul className="flex flex-col gap-1.5">
-                                {detail.services.map((service) => (
-                                    <li key={service.type} className="flex items-baseline justify-between gap-3">
-                                        <span className="text-base text-ink-700">{service.label}</span>
-                                        <span className="num text-base text-ink-900">
-                                            {money(service.priceCents)}
-                                            {service.writingFeeCents > 0 && (
-                                                <span className="ml-1 text-xs text-ink-500">
-                                                    +{money(service.writingFeeCents).replace(/\.00$/, '')} writing
-                                                </span>
-                                            )}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-
-                        <dl className="grid grid-cols-2 gap-3">
-                            <Fact label="Minimum words" value={number(detail.minWords)} />
-                            <Fact label="Links allowed" value={`${detail.linksAllowed} of ${detail.maxLinks} max`} />
-                        </dl>
-
-                        {detail.description && (
-                            <section>
-                                <h3 className="mb-1 font-sora text-sm font-semibold text-ink-900">About the site</h3>
-                                <p className="text-base text-ink-700">{detail.description}</p>
-                            </section>
-                        )}
-
-                        {detail.guidelines && (
-                            <section>
-                                <h3 className="mb-1 font-sora text-sm font-semibold text-ink-900">
-                                    Publisher guidelines
-                                </h3>
-                                <p className="whitespace-pre-line text-base text-ink-700">{detail.guidelines}</p>
-                            </section>
-                        )}
-
-                        {detail.sampleUrl && (
-                            <a
-                                href={detail.sampleUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-base font-medium text-brand hover:underline"
-                            >
-                                See an example post
-                            </a>
-                        )}
-                    </>
-                )}
-            </div>
+            {failed ? (
+                <p className="text-base text-danger">
+                    This site’s details could not be loaded.{' '}
+                    <a href={`/catalog/website/${site.slug}`} className="font-medium underline">
+                        Open it as a page instead
+                    </a>
+                    .
+                </p>
+            ) : merged === null ? (
+                <div className="flex flex-col gap-3">
+                    {Array.from({ length: 8 }, (_, row) => (
+                        <Skeleton key={row} className="h-5 w-full" />
+                    ))}
+                </div>
+            ) : (
+                <WebsiteDetail site={merged} ranges={ranges} />
+            )}
         </Drawer>
     );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+/** True while focus is in something that eats letters. */
+function isTyping(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+
     return (
-        <div className="min-w-0">
-            <dt className="text-xs text-ink-500">{label}</dt>
-            <dd className="truncate text-base text-ink-900">{value}</dd>
-        </div>
+        target.isContentEditable ||
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
     );
 }

@@ -14,40 +14,11 @@ use App\Domain\Catalog\Models\Language;
 use App\Domain\Catalog\Models\SensitiveTopic;
 use App\Domain\Catalog\Models\Website;
 use App\Domain\Catalog\Models\WebsiteCategory;
-use App\Domain\Catalog\Models\WebsiteMetric;
-use App\Domain\Catalog\Models\WebsitePrice;
 use App\Domain\Catalog\Support\CatalogPresenter;
 use App\Domain\Posts\Models\Post;
 use App\Domain\Projects\Models\Project;
-use App\Domain\Trading\Enums\ServiceType;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Testing\AssertableInertia;
-
-function buyer(): User
-{
-    return User::factory()->create(['email_verified_at' => now()]);
-}
-
-/**
- * A site with everything the catalog reads. Named arguments at the call site
- * keep each test's intent legible against a model with eighteen columns.
- */
-function site(array $attributes = [], array $metrics = [], array $price = []): Website
-{
-    $website = Website::factory()->create($attributes + ['is_active' => true]);
-
-    if ($metrics !== false) {
-        WebsiteMetric::factory()->create($metrics + ['website_id' => $website->id, 'fetched_at' => now()]);
-    }
-
-    WebsitePrice::factory()->create($price + [
-        'website_id' => $website->id,
-        'service_type' => ServiceType::ArticlePlacement,
-    ]);
-
-    return $website->fresh();
-}
 
 function filters(array $query = []): CatalogFilters
 {
@@ -447,7 +418,7 @@ it('serves one site as JSON for the drawer', function (): void {
     $website = site(['domain' => 'detail.test', 'guidelines' => 'No affiliate links.']);
 
     $this->actingAs($user)
-        ->getJson(advertiserUrl("/catalog/{$website->slug}"))
+        ->getJson(advertiserUrl("/catalog/website/{$website->slug}"))
         ->assertOk()
         ->assertJsonPath('domain', 'detail.test')
         ->assertJsonPath('guidelines', 'No affiliate links.')

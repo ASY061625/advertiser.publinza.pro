@@ -36,6 +36,14 @@ export function useDismiss<T extends HTMLElement>(
         overlayStack.push(id);
 
         function onPointerDown(event: PointerEvent) {
+            // Only the topmost overlay answers an outside press, for the same
+            // reason it is the only one that answers Escape — and for one more:
+            // an overlay opened from inside another is usually portalled to the
+            // body, so a press on a dropdown item inside a drawer lands outside
+            // the drawer's own DOM and would otherwise close the drawer under
+            // the menu the person is still using.
+            if (overlayStack[overlayStack.length - 1] !== id) return;
+
             const target = event.target as Node;
             const inside = ref.current?.contains(target) === true || alsoInside?.current?.contains(target) === true;
 

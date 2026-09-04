@@ -44,6 +44,11 @@ class WebsiteFactory extends Factory
             'min_words' => fake()->randomElement([500, 700, 800, 1000, 1200]),
             'sample_url' => "https://{$domain}/example-post",
             'guidelines' => fake()->paragraph(),
+            'marks_sponsored' => fake()->boolean(35),
+            'link_guarantee_months' => fake()->randomElement([0, 6, 12, 24]),
+            'accepts_images' => fake()->boolean(85),
+            'accepts_embeds' => fake()->boolean(45),
+            'domain_registered_at' => fake()->dateTimeBetween('-18 years', '-1 year'),
         ];
     }
 
