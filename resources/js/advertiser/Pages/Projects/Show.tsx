@@ -9,10 +9,12 @@ import type {
     ProjectSettingsPayload,
     ProjectTabId,
 } from '@shared/types/projects';
+import type { CompetitorsPayload } from '@shared/types/competitors';
 import type { HistoryPayload } from '@shared/types/history';
 import type { StatisticsPayload } from '@shared/types/statistics';
 import { PostsGrid, type PostsView } from '../../Components/posts/PostsGrid';
 import { ProjectSettingsForm } from '../../Components/projects/settings/ProjectSettingsForm';
+import { CompetitorsTab } from '../../Components/projects/competitors/CompetitorsTab';
 import { HistoryTab } from '../../Components/projects/history/HistoryTab';
 import { StatisticsTab } from '../../Components/projects/statistics/StatisticsTab';
 import { ProjectSummaryStrip } from '../../Components/projects/general/ProjectSummaryStrip';
@@ -39,16 +41,17 @@ interface Props {
     statistics?: StatisticsPayload | null;
     /** Only sent for the History tab. */
     history?: HistoryPayload | null;
+    /** Only sent for the Competitors tab. */
+    competitors?: CompetitorsPayload | null;
 }
 
 /**
  * One project. The header and tab bar are the layout's; this file is the body
  * of whichever tab `?tab=` selected.
  *
- * General and Project settings are built. Statistics, History and Competitors
- * are their own pieces of work and say so rather than rendering an empty panel
- * that looks broken. Post management is the posts grid scoped to this project,
- * so the controller redirects `?tab=posts` there instead of copying the grid.
+ * Post management is the posts grid scoped to this project rather than a copy
+ * of it, which is why that branch passes so much configuration: the same
+ * component serves /posts, and the differences between the two are props.
  */
 export default function ProjectsShow({
     project,
@@ -61,6 +64,7 @@ export default function ProjectsShow({
     settings = null,
     statistics = null,
     history = null,
+    competitors = null,
 }: Props) {
     return (
         <ProjectLayout project={project} tab={tab} postMix={stats.posts}>
@@ -72,6 +76,8 @@ export default function ProjectsShow({
                 <StatisticsTab project={project} statistics={statistics} />
             ) : tab === 'history' && history !== null ? (
                 <HistoryTab project={project} history={history} />
+            ) : tab === 'competitors' && competitors !== null ? (
+                <CompetitorsTab project={project} competitors={competitors} />
             ) : tab === 'general' ? (
                 <General
                     project={project}
@@ -206,15 +212,18 @@ function PostManagement({
     );
 }
 
-const COMING: Record<string, string> = {
-    competitors: 'The sites ranking against yours, and where they are being published.',
-};
-
+/**
+ * Every tab is built now, so this is only reachable if a payload failed to
+ * arrive for the tab that was asked for — a reload is the honest advice.
+ */
 function NotBuiltYet({ tab }: { tab: ProjectTabId }) {
     return (
         <div className="rounded-card border border-subtle bg-card p-8 text-center shadow-card">
-            <p className="text-base font-medium text-ink-900">Not here yet.</p>
-            <p className="mx-auto mt-1 max-w-prose text-sm text-ink-500">{COMING[tab]}</p>
+            <p className="text-base font-medium text-ink-900">This tab did not load.</p>
+            <p className="mx-auto mt-1 max-w-prose text-sm text-ink-500">
+                Reload the page to try again. If it keeps happening, tell us which project and which tab ({tab}) and we
+                will look.
+            </p>
         </div>
     );
 }

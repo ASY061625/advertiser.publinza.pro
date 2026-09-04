@@ -61,6 +61,42 @@ return [
         'ranges_ttl_minutes' => (int) env('CATALOG_RANGES_TTL', 60),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Competitors
+    |--------------------------------------------------------------------------
+    |
+    | The SEO benchmarking tab. `provider` picks which vendor answers for every
+    | domain in every project — one vendor at a time, because a delta between
+    | two vendors' figures for the same measure is not a measurement of
+    | anything. Set it to ahrefs, semrush, moz or dataforseo and give that
+    | vendor its credentials in config/services.php; with none configured the
+    | tab runs on clearly-labelled sample data rather than an error screen.
+    |
+    */
+
+    'competitors' => [
+        'provider' => env('COMPETITOR_METRICS_PROVIDER', 'sample'),
+
+        // How many rivals one project can track. The tab is a comparison, and a
+        // comparison of thirty things is a spreadsheet.
+        'max_per_project' => (int) env('COMPETITOR_MAX_PER_PROJECT', 10),
+
+        // How long a fetched row stands before it is refetched.
+        'cache_days' => (int) env('COMPETITOR_CACHE_DAYS', 7),
+
+        // How long a person must wait between manual refreshes of one
+        // competitor. Vendor calls are metered and billed per row.
+        'refresh_cooldown_hours' => (int) env('COMPETITOR_REFRESH_COOLDOWN', 24),
+
+        'gap_keywords' => (int) env('COMPETITOR_GAP_KEYWORDS', 100),
+
+        'referring_domains' => (int) env('COMPETITOR_REFERRING_DOMAINS', 500),
+
+        // How many suggestion cards the recommendation strip can show.
+        'recommendations' => (int) env('COMPETITOR_RECOMMENDATIONS', 5),
+    ],
+
     'billing' => [
         'currency' => env('BILLING_CURRENCY', 'USD'),
         'minimum_top_up_minor_units' => (int) env('BILLING_MIN_TOP_UP', 1000),

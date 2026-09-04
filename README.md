@@ -589,6 +589,11 @@ ProjectLayout.tsx          breadcrumb, identity, actions, tab bar — built once
     general/FinancePanel   spent / frozen / average + split bar
     general/FoldersSection folder rows, add, edit, delete
     general/FirstDealCard  shown until the project has a post
+    posts/PostsGrid        the /posts grid, scoped to this project
+    settings/…             five anchored sections and a dirty-only footer
+    statistics/…           control bar, four cards, five charts, a table
+    history/…              the immutable timeline
+    competitors/…          add row, your-site card, table, three charts
   Projects/Folders/Edit    add or edit one folder
 ```
 
@@ -955,6 +960,113 @@ another and reuses the same session is logged out before any policy runs — the
 redirects to login and an authorisation assertion fails for a reason that has nothing to do
 with authorisation. The middleware is doing its job; the test now uses one outsider for both
 requests.
+
+---
+
+## Competitors — `/projects/{id}?tab=competitors`
+
+Ten rival domains benchmarked against the project's own site. A comparison, so every
+figure on the tab is a difference — which is what dictates most of the design below.
+
+### One vendor answers for every domain, and the row says which
+
+Four providers implement `MetricsProvider`, selected by `publinza.competitors.provider`.
+Nothing above the interface learns who answered; swapping vendor is a line of config.
+
+The seam matters more here than in most integrations. Ahrefs and Moz disagree about the
+same domain by a wide margin, so a delta between one vendor's figure for your site and
+another's for a rival is not a measurement of anything. One provider answers for every
+domain in a project, and `competitor_metrics.provider` records which — on the row, not in
+config, because config says who answers *now* and a cached row has to keep saying who
+answered *then*. The tab prints it: "Data from Ahrefs, updated 3 April".
+
+`dr` and `da` are separate nullable columns for the same reason. No vendor sells both, and
+the one it does not sell stays null and renders as an em dash. Defaulting it to zero would
+print a real score — the worst one on the scale — for a site nobody measured.
+
+With no vendor credentials the registry falls back to a sample provider, which labels
+itself "Sample data" in the same line that would name Ahrefs. Without it the tab is
+unreachable in development, in CI and in any review app, and a feature nobody can open is
+a feature nobody reviews.
+
+### Your own site is a row in the same table
+
+`competitors.is_self`. It carries the same columns, filled by the same provider on the
+same schedule, and is excluded from the ten slots. A separate table would have been the
+same six columns and a second code path to keep in step — and the first time the two
+disagreed, every delta on the page would have been wrong in a way nobody could see.
+
+The unique key on `(project_id, domain)` then also means an advertiser cannot add their
+own site as a rival to itself. And because the promoted URL is editable on the settings
+tab, `EnsureProjectSiteTracked` repoints and refetches the row when it changes — otherwise
+every comparison would silently be against the site they used to promote.
+
+### Failure keeps the numbers
+
+A provider failure marks the row and stops. It never writes a row of zeros and never
+deletes the last good one, so the tab can show last week's figures under an amber
+"Showing cached data from …" notice. Both alternatives lose something true: zeros redraw
+every chart around a site that supposedly lost all its traffic overnight, and an error
+screen throws away figures that are still accurate, just not current.
+
+Manual refresh is one a day per competitor, enforced in the action rather than only on the
+button, and the remaining wait is printed on the control it gates. Vendor calls are
+metered and billed per row; these numbers move on a scale of weeks.
+
+### The recommendation strip is derived, not written
+
+"They have 34 links from Technology sites you don't" is that competitor's referring domains
+in a category minus yours. The categories come from intersecting the provider's referring-
+domain list with **Publinza's own catalog** — so a category only appears if this company
+has sites in it, and the button always lands on a catalog with something in it. A
+suggestion nobody can act on is an advertisement for a gap in the inventory.
+
+### Chart colours were computed, not chosen
+
+Run through the `dataviz` validator against white, all pairs:
+
+| Check | Result |
+| --- | --- |
+| Lightness band | PASS — all inside L 0.43–0.77 |
+| Chroma floor | PASS |
+| CVD separation | WARN — worst pair `#a21caf`×`#1d4ed8`, ΔE 7.4 (protan) |
+| Normal vision | PASS — worst pair ΔE 22.2 |
+| Contrast on white | PASS — all ≥ 3:1 |
+
+Brand blue is your site and is never assigned to a rival. Three competitor hues
+(`#0d9488`, `#c2410c`, `#a21caf`) crossed with four stroke patterns give the ten stable
+identities the per-project limit needs; cycling a hue alone would give the fourth
+competitor the first one's colour. The slot is fixed when a competitor is added, so
+sorting the table or hiding a line never repaints the others.
+
+That CVD WARN sits in the 6–8 band, legal only with a second encoding. There are three:
+the stroke pattern, a legend that draws each series exactly as the plot does, and a table
+view under every chart. Earlier attempts at five and six distinct hues both failed — with
+brand blue occupying the blue-violet region, the warm-to-green arc is exactly where
+deuteranopia collapses, and every candidate fifth hue failed either CVD or the
+normal-vision floor.
+
+### Two bugs this surfaced
+
+**A lazy load that only throws sometimes.** `FetchCompetitorMetrics` read
+`$competitor->project`, and this app turns lazy loading into an exception outside
+production. Whether it throws depends on where the row came from: Eloquent arms the guard
+only on models hydrated from a query that returned *more than one row*
+(`Builder::hydrate`). So a caller holding one row got a silent extra query, a caller
+iterating a collection got an exception, and a test using a freshly-created model — exempt
+from the guard entirely — proved nothing either way. The regression test fetches two rows
+as a collection, which is the only shape that fails without the fix.
+
+**A cooldown that threw on every render.** `cooldownSeconds()` returned Carbon's float
+from `diffInSeconds` through an `int` return type. The tab calls it once per row.
+
+### One thing deliberately not built
+
+No favicons. Fetching one means asking a third party for an icon and telling them, on
+every page load, which rivals this advertiser is tracking — some of the most commercially
+sensitive information in the product. The dashboard already made this call for the weaker
+case of the sites an advertiser buys on. The 20px slot holds a monogram instead, so
+nothing shifts if Publinza ever serves its own marks.
 
 ---
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\Advertiser\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\Advertiser\BillingController;
 use App\Http\Controllers\Advertiser\CartController;
 use App\Http\Controllers\Advertiser\CatalogController;
+use App\Http\Controllers\Advertiser\CompetitorController;
 use App\Http\Controllers\Advertiser\DashboardController;
 use App\Http\Controllers\Advertiser\ExportController;
 use App\Http\Controllers\Advertiser\MessageController;
@@ -161,6 +162,30 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     // 24-hour window are checked here rather than baked into a signed URL that
     // would outlive both.
     Route::get('/exports/{export}/download', [ExportController::class, 'download'])->name('exports.download');
+
+    /*
+    | Competitors live under their project for the same reason folders do: the
+    | id is only meaningful inside one, and every action here re-checks that
+    | rather than trusting route model binding to have found the right row.
+    */
+    Route::post('/projects/{project}/competitors', [CompetitorController::class, 'store'])
+        ->name('projects.competitors.store');
+    Route::patch('/projects/{project}/competitors/{competitor}', [CompetitorController::class, 'update'])
+        ->name('projects.competitors.update');
+    Route::delete('/projects/{project}/competitors/{competitor}', [CompetitorController::class, 'destroy'])
+        ->name('projects.competitors.destroy');
+
+    // Throttled: each refresh is a metered call to a paid vendor API. The
+    // 24-hour per-competitor cooldown is the real limit and lives in the
+    // action; this is the ceiling on hammering the endpoint itself.
+    Route::post('/projects/{project}/competitors/{competitor}/refresh', [CompetitorController::class, 'refresh'])
+        ->middleware('throttle:30,1')
+        ->name('projects.competitors.refresh');
+
+    // Read on demand by the gap drawer, so a hundred keywords per competitor
+    // are not shipped with every render of the tab.
+    Route::get('/projects/{project}/competitors/{competitor}/gap-keywords', [CompetitorController::class, 'gapKeywords'])
+        ->name('projects.competitors.gap');
 
     // Folders live under the project they belong to, in the URL and in the
     // authorisation: every action checks the project, so a folder id from

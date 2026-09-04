@@ -12,6 +12,7 @@ use App\Domain\Catalog\Models\Country;
 use App\Domain\Catalog\Models\Language;
 use App\Domain\Catalog\Models\SensitiveTopic;
 use App\Domain\Catalog\Models\WebsiteCategory;
+use App\Domain\Intelligence\Actions\GetCompetitorComparison;
 use App\Domain\Posts\Actions\ListPosts;
 use App\Domain\Posts\DTOs\PostFilters;
 use App\Domain\Posts\Models\Post;
@@ -177,6 +178,11 @@ class ProjectController extends Controller
                 : null,
             'history' => $tab === ProjectTab::History
                 ? $this->historyPayload($request, $project, app(GetProjectHistory::class))
+                : null,
+            // Reads eleven rows and their newest metric, and queues a refetch
+            // for anything stale — none of which the other five tabs want.
+            'competitors' => $tab === ProjectTab::Competitors
+                ? app(GetCompetitorComparison::class)->handle($project)
                 : null,
             'project' => [
                 'id' => $project->id,

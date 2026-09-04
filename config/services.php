@@ -27,8 +27,26 @@ return [
         'token' => env('AHREFS_API_TOKEN'),
     ],
 
+    /*
+    | The four SEO vendors the competitors tab can read from. Which one is
+    | actually used is `publinza.competitors.provider`; these are only the
+    | credentials for whichever that names.
+    */
+
     'moz' => [
         'access_id' => env('MOZ_ACCESS_ID'),
-        'secret' => env('MOZ_SECRET_KEY'),
+        'secret_key' => env('MOZ_SECRET_KEY'),
+    ],
+
+    'semrush' => [
+        'key' => env('SEMRUSH_API_KEY'),
+        'database' => env('SEMRUSH_DATABASE', 'us'),
+    ],
+
+    'dataforseo' => [
+        'login' => env('DATAFORSEO_LOGIN'),
+        'password' => env('DATAFORSEO_PASSWORD'),
+        'location_code' => (int) env('DATAFORSEO_LOCATION_CODE', 2840),
+        'language_code' => env('DATAFORSEO_LANGUAGE_CODE', 'en'),
     ],
 ];
