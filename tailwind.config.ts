@@ -125,6 +125,16 @@ export default {
 
             maxWidth: { content: '1440px', drawer: '480px' },
 
+            /*
+             * One extra breakpoint, for one thing: the catalog's filter rail.
+             *
+             * The rail is 280px and stops fitting beside the results at about
+             * 1100px — which is between Tailwind's lg and xl. Naming it here
+             * keeps the number in the design system rather than as a magic
+             * `min-[1100px]:` sprinkled across three components.
+             */
+            screens: { rail: '1100px' },
+
             transitionDuration: {
                 fast: 'var(--motion-fast)',
                 drawer: 'var(--motion-drawer)',

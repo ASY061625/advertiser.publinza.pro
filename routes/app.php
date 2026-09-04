@@ -21,6 +21,7 @@ use App\Http\Controllers\Advertiser\ProjectController;
 use App\Http\Controllers\Advertiser\ProjectFolderController;
 use App\Http\Controllers\Advertiser\SearchController;
 use App\Http\Controllers\Advertiser\ShellController;
+use App\Http\Controllers\Advertiser\SiteListController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -118,7 +119,23 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
 
     Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
-    Route::get('/catalog/{site}', [CatalogController::class, 'show'])->name('catalog.show');
+
+    // JSON, for the detail drawer. The catalog stays on one page — opening a
+    // site should not cost the filters, the scroll position or the page.
+    Route::get('/catalog/{website}', [CatalogController::class, 'show'])->name('catalog.show');
+
+    Route::post('/catalog/view', [CatalogController::class, 'view'])->name('catalog.view');
+
+    /*
+    | The three lists an advertiser keeps about a site. Favourites and the
+    | blacklist toggle, because both are driven from one control on a row.
+    */
+    Route::post('/sites/{website}/favorite', [SiteListController::class, 'toggleFavorite'])
+        ->name('sites.favorite');
+    Route::post('/sites/{website}/blacklist', [SiteListController::class, 'toggleBlacklist'])
+        ->name('sites.blacklist');
+    Route::post('/sites/{website}/wishlist', [SiteListController::class, 'addToWishlist'])
+        ->name('sites.wishlist');
 
     Route::post('/cart/{website}', [CartController::class, 'store'])->name('cart.store');
     Route::delete('/cart/{item}', [CartController::class, 'destroy'])->name('cart.destroy');

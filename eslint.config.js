@@ -67,6 +67,10 @@ export default tseslint.config(
         // that documents it.
         files: [
             'resources/js/advertiser/Pages/Catalog/**/*.tsx',
+            // The catalog's own components. The page was one file when this
+            // rule was written; the rule means "the catalog", and the catalog
+            // is now a page plus the pieces it is built from.
+            'resources/js/advertiser/Components/catalog/**/*.tsx',
             'resources/js/shared/ui/QuantBar.tsx',
             'resources/js/advertiser/Components/design-system/**/*.tsx',
         ],

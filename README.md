@@ -1070,6 +1070,113 @@ nothing shifts if Publinza ever serves its own marks.
 
 ---
 
+## Catalog — `/catalog`
+
+The commercial heart of the product, and the one place QuantBar is allowed to appear. A 280px
+sticky filter rail, fourteen filter groups, two layouts, and two modes told apart by one query
+parameter.
+
+### Two modes, one page
+
+`/catalog` browses; `/catalog?project={id}` buys. A separate route for buying would mean a
+shared link stops working the moment the recipient does not own the project, and would leave
+two page components to keep in step. Browse mode disables "Add to cart" rather than hiding it
+— a missing button reads as "this cannot be bought", a disabled one that says **Choose a
+project first** reads as "not yet, and here is the step".
+
+A project id belonging to somebody else drops the page quietly back to browse mode. That
+parameter survives in bookmarks long after access to a project has gone, and a 403 on the
+catalog is a confusing way to learn it.
+
+### The URL is the whole state
+
+Fourteen filter groups, the sort, the layout and the page size all live in the query string
+and nowhere else, so a view is a link. `CatalogFilters` is the one place that reads and writes
+that format, and it round-trips: what it parses is what it re-emits.
+
+Ranges are nullable pairs rather than defaulted to the catalog's own min and max. "No price
+filter" and "a price filter spanning the whole catalog" look identical on screen and behave
+differently — a stored link with an explicit ceiling should keep it, and one with no filter
+should widen as inventory grows. The blacklist toggle is deliberately excluded from
+`isFiltering()`: it is on by default, so counting it would mean the catalog is never
+unfiltered, and the "no filters and no results" state — the one that means something is broken
+— could never be reached.
+
+### Meilisearch answers words; the database answers everything else
+
+Scout's builder is not an Eloquent builder, so it cannot carry the metrics join, the price
+join and three per-user `exists()` clauses. And three of the filters are about *this
+advertiser* — their blacklist, their favourites, what they have already bought for this
+project — which cannot live in a shared index without indexing every user against every site.
+So the engine returns ids and the database narrows them.
+
+### Facets are counted against every filter except their own
+
+With Finance ticked, the Technology row still says how many sites ticking it too would add.
+Counting a dimension against itself is the classic faceted-search bug: every unselected option
+reads zero and the list becomes a dead end. Zero counts are shown, quieter — an option missing
+from the list is indistinguishable from one that has not loaded.
+
+The price histogram behind the slider is drawn with the price filter removed, because the
+histogram is what the handles are aimed *at*.
+
+### Cursor pagination over a moving sort
+
+The catalog is ordered by figures that change. A site's traffic moving between two clicks
+shifts every offset after it, and the buyer sees a row twice or not at all. Cursors name a
+row.
+
+Two details make it work over a joined column. The sort columns are selected as plain
+`table.column as alias` strings, because the cursor paginator maps an ordering alias back to
+its column by string-matching `" as "` in the select list — a raw `Expression` there is not a
+string, and the bare alias would reach the `WHERE` clause, which MySQL rejects. And every sort
+ends in `websites.id`, so ties cannot swap places between pages.
+
+### Relaxations are aimed, not guessed
+
+"Raise your maximum price to $250 to see 34 more sites" is only worth printing if both numbers
+are real. The boundary is the cheapest site *above* the buyer's ceiling, read off the filtered
+inventory and rounded to something a person would say; the count comes from running the
+relaxed filter. The first version multiplied the ceiling by 1.5, which landed short of the
+next site and produced a card promising nothing.
+
+One filter is relaxed at a time. Two filters that exclude each other produce no suggestions at
+all, which is correct — no single change helps — and the "Clear all filters" button is the
+honest fallback.
+
+### Compatibility warnings inform, they do not decide
+
+A site whose language is outside the project's, or that does not accept one of its topics,
+gets an amber flag naming the mismatch. The row is not hidden and the button is not disabled:
+that publisher may still be right for a different article, and the catalog is not the place to
+decide it on the buyer's behalf.
+
+### Three bugs this surfaced
+
+**Every cart, favourite and blacklist button 404ed.** `Website::getRouteKeyName()` is `slug`,
+and the frontend addressed sites by numeric id. Route model binding found nothing and returned
+404 from controls that looked like they had worked. Every site route takes a slug now.
+
+**The row menu was trapped in a stacking context.** Pinning the action column to the right edge
+— so the buy button stays reachable when nine dense columns overflow — made that cell
+`position: sticky`, which creates a stacking context. The dropdown inside it could not paint
+over the next row at any z-index, and the container's `overflow-x: auto` clipped whatever hung
+below the last row. `Dropdown` now portals its menu to the body and positions it from the
+trigger's box, which fixes the same latent problem in every other scrollable table. `useDismiss`
+grew an `alsoInside` ref for exactly this: with the panel portalled, the trigger is outside it
+in the DOM, so clicking to close would close and immediately reopen.
+
+**"In cart" wrapped, and the wrap cost the price column.** The pinned column widened enough to
+overlay the price beside it. Nothing in that column ever benefits from wrapping.
+
+### One number that is in the design system now
+
+`screens.rail` — 1100px, where a 280px rail stops fitting beside the results. The catalog is
+the only thing that uses it, but naming it beats three `min-[1100px]:` literals across three
+components.
+
+---
+
 ## Layout
 
 ```

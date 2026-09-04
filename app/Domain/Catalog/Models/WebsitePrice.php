@@ -8,12 +8,19 @@ use App\Casts\MoneyCast;
 use App\Domain\Billing\DTOs\Money;
 use App\Domain\Trading\Enums\ContentMode;
 use App\Domain\Trading\Enums\ServiceType;
+use Database\Factories\WebsitePriceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property ServiceType $service_type
+ * @property int $price_cents
+ * @property int $writing_fee_cents
+ */
 class WebsitePrice extends Model
 {
+    /** @use HasFactory<WebsitePriceFactory> */
     use HasFactory;
 
     protected $fillable = [

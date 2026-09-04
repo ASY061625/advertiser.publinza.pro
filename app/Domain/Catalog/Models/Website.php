@@ -20,6 +20,9 @@ use Laravel\Scout\Searchable;
  * A publisher site an advertiser can buy a placement on.
  *
  * @property bool $is_active
+ * @property LinkType $link_type
+ * @property array<int, string>|null $accepts_sensitive_topics
+ * @property int $publication_period_hours
  */
 class Website extends Model
 {

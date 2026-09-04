@@ -1,9 +1,14 @@
-import { forwardRef, useEffect, useId, useRef, type InputHTMLAttributes } from 'react';
+import { forwardRef, useEffect, useId, useRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@shared/lib/cn';
 import { CheckIcon, MinusIcon } from './icons';
 
 export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
-    label?: string;
+    /**
+     * Usually a string. Accepts nodes so a label can carry a glyph beside the
+     * words — a flag before a country, a swatch before a colour — without the
+     * caller having to rebuild the label-and-input association by hand.
+     */
+    label?: ReactNode;
     hint?: string;
     error?: string;
     /** Header checkbox state when only some rows are selected. */

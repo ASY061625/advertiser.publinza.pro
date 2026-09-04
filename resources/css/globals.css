@@ -203,4 +203,25 @@
     .table-sticky-col thead th:first-child {
         @apply z-30;
     }
+
+    /*
+     * The catalog's action column, pinned to the right edge.
+     *
+     * Nine columns of dense metrics do not fit beside a 280px filter rail on a
+     * 1280px screen, and the container scrolls — which is fine for the middle
+     * of a data table and not fine for the one control every row exists to
+     * offer. Pinning it means the buy button is reachable at any width without
+     * hunting for it, and the metrics scroll underneath.
+     */
+    .table-sticky-action tbody td:last-child,
+    .table-sticky-action thead th:last-child {
+        @apply sticky right-0 z-10 bg-card;
+        /* A hairline so the pinned column reads as pinned rather than as a
+           column that happens to be last. */
+        box-shadow: inset 1px 0 0 var(--ink-300);
+    }
+
+    .table-sticky-action thead th:last-child {
+        @apply z-30 bg-sunken;
+    }
 }

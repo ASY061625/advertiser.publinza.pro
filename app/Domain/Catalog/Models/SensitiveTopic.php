@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Models;
 
 use App\Domain\Projects\Models\Project;
+use Database\Factories\SensitiveTopicFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class SensitiveTopic extends Model
 {
+    /** @use HasFactory<SensitiveTopicFactory> */
     use HasFactory;
 
     protected $fillable = ['name', 'slug', 'description'];

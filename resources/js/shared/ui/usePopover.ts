@@ -15,8 +15,18 @@ const overlayStack: string[] = [];
  * Listens on `pointerdown` rather than `click` so the popover closes before a
  * click lands on whatever is underneath, and only while open, so a page full of
  * closed dropdowns costs nothing.
+ *
+ * `alsoInside` is for a surface rendered through a portal: the returned ref goes
+ * on the trigger, the portalled panel goes here, and a press on either counts as
+ * inside. Without it a portalled menu closes on the same click that reopens it,
+ * because the trigger is outside the panel in the DOM even though it is the
+ * thing that opened it.
  */
-export function useDismiss<T extends HTMLElement>(open: boolean, onClose: () => void): RefObject<T> {
+export function useDismiss<T extends HTMLElement>(
+    open: boolean,
+    onClose: () => void,
+    alsoInside?: RefObject<HTMLElement | null>,
+): RefObject<T> {
     const ref = useRef<T>(null);
     const id = useId();
 
@@ -26,7 +36,10 @@ export function useDismiss<T extends HTMLElement>(open: boolean, onClose: () => 
         overlayStack.push(id);
 
         function onPointerDown(event: PointerEvent) {
-            if (ref.current && !ref.current.contains(event.target as Node)) onClose();
+            const target = event.target as Node;
+            const inside = ref.current?.contains(target) === true || alsoInside?.current?.contains(target) === true;
+
+            if (ref.current && !inside) onClose();
         }
 
         function onKeyDown(event: KeyboardEvent) {
@@ -47,7 +60,7 @@ export function useDismiss<T extends HTMLElement>(open: boolean, onClose: () => 
             const index = overlayStack.lastIndexOf(id);
             if (index !== -1) overlayStack.splice(index, 1);
         };
-    }, [open, onClose, id]);
+    }, [open, onClose, id, alsoInside]);
 
     return ref;
 }

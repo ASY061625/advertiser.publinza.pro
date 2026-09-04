@@ -44,7 +44,7 @@ it('lists active sites with the catalog-wide metric ranges', function (): void {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Catalog/Index')
-            ->has('sites.data', 2)
+            ->has('sites', 2)
             // The quant-bars scale against active sites only, so the inactive
             // 500k row must not stretch the range.
             ->where('ranges.traffic', [1_000, 90_000]),
@@ -62,8 +62,8 @@ it('hides sites the advertiser has blacklisted', function (): void {
         ->get(advertiserUrl('/catalog'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('sites.data', 1)
-            ->where('sites.data.0.domain', $wanted->domain),
+            ->has('sites', 1)
+            ->where('sites.0.domain', $wanted->domain),
         );
 });
 
@@ -90,8 +90,8 @@ it('narrows the catalog to a text search without losing its joins or filters', f
         ->get(advertiserUrl('/catalog?q=quietledger'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('sites.data', 1)
-            ->where('sites.data.0.domain', 'quietledger.com')
+            ->has('sites', 1)
+            ->where('sites.0.domain', 'quietledger.com')
         );
 });
 
@@ -102,5 +102,5 @@ it('returns nothing rather than everything when a search matches no site', funct
     $this->actingAs($user)
         ->get(advertiserUrl('/catalog?q=zzzznothingmatchesthis'))
         ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->has('sites.data', 0));
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('sites', 0));
 });

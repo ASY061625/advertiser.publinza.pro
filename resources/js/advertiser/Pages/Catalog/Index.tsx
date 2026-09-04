@@ -1,136 +1,304 @@
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '../../Layouts/AppShell';
-import {
-    Button,
-    DataGridToolbar,
-    EmptyState,
-    Pagination,
-    QuantBar,
-    SearchIcon,
-    Table,
-    type Column,
-    type SortState,
-} from '@shared/ui';
-import { money } from '@shared/lib/format';
-import type { CatalogRanges, CatalogSite, Paginated } from '@shared/types';
+import { Button, Drawer, EmptyState, SearchIcon } from '@shared/ui';
+import { number } from '@shared/lib/format';
+import type {
+    CatalogFacets,
+    CatalogFilterState,
+    CatalogOptions,
+    CatalogPagination,
+    CatalogProject,
+    CatalogRangeSet,
+    CatalogRow,
+    CatalogSuggestion,
+} from '@shared/types/catalog';
+import { AppliedChips } from '../../Components/catalog/AppliedChips';
+import { CatalogCards } from '../../Components/catalog/CatalogCards';
+import { CatalogTable } from '../../Components/catalog/CatalogTable';
+import { CatalogToolbar } from '../../Components/catalog/CatalogToolbar';
+import { FilterRail } from '../../Components/catalog/FilterRail';
+import { ProjectBar } from '../../Components/catalog/ProjectBar';
+import { SiteDrawer } from '../../Components/catalog/SiteDrawer';
+import { toPayload, useCatalogFilters } from '../../Components/catalog/useCatalogFilters';
 
-interface CatalogIndexProps {
-    sites: Paginated<CatalogSite>;
-    ranges: CatalogRanges;
-    filters: { q?: string };
+interface Props {
+    sites: CatalogRow[];
+    pagination: CatalogPagination;
+    total: number;
+    ranges: CatalogRangeSet;
+    facets: CatalogFacets;
+    options: CatalogOptions;
+    filters: CatalogFilterState;
+    isFiltering: boolean;
+    suggestions: CatalogSuggestion[];
+    project: CatalogProject | null;
+    projects: { id: number; name: string; color: string | null }[];
+    canBuy: boolean;
 }
 
-export default function CatalogIndex({ sites, ranges, filters }: CatalogIndexProps) {
-    const [search, setSearch] = useState(filters.q ?? '');
-    const [selected, setSelected] = useState<string[]>([]);
-    const [sort, setSort] = useState<SortState>({ column: 'traffic', direction: 'desc' });
+/**
+ * The catalog: a 280px filter rail and the results.
+ *
+ * Two modes, one page, told apart by `?project=`. Browse mode reads; buying mode
+ * buys. Everything else — the rail, the table, the cards, the drawer — is the
+ * same in both, so there is one catalog to maintain rather than two that drift.
+ */
+export default function CatalogIndex({
+    sites,
+    pagination,
+    total,
+    ranges,
+    facets,
+    options,
+    filters,
+    isFiltering,
+    suggestions,
+    project,
+    projects,
+}: Props) {
+    const { filters: state, apply, applyDebounced, clear } = useCatalogFilters(filters);
+    const [drawerFor, setDrawerFor] = useState<CatalogRow | null>(null);
+    const [railOpen, setRailOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    /**
-     * The catalog is the one place QuantBar is used. Every quantitative cell
-     * gets a number plus a bar scaled against the whole catalog's range, so a
-     * buyer scanning 200 rows reads shape before digits.
-     */
-    const columns: Column<CatalogSite>[] = [
-        {
-            id: 'domain',
-            header: 'Site',
-            cell: (site) => (
-                <span>
-                    <span className="font-medium text-ink-900">{site.domain}</span>
-                    <span className="ml-2 text-sm text-ink-500">{site.language}</span>
-                </span>
-            ),
-        },
-        { id: 'category', header: 'Category', cell: (site) => site.category },
-        {
-            id: 'traffic',
-            header: 'Traffic',
-            numeric: true,
-            sortable: true,
-            cell: (site) => <QuantBar value={site.traffic} range={ranges.traffic} />,
-        },
-        {
-            id: 'domain_rating',
-            header: 'DR',
-            numeric: true,
-            sortable: true,
-            cell: (site) => <QuantBar value={site.domainRating} range={ranges.domainRating} format={String} />,
-        },
-        {
-            id: 'domain_authority',
-            header: 'DA',
-            numeric: true,
-            cell: (site) => <QuantBar value={site.domainAuthority} range={ranges.domainAuthority} format={String} />,
-        },
-        {
-            id: 'spam_score',
-            header: 'Spam score',
-            numeric: true,
-            cell: (site) => (
-                <QuantBar value={site.spamScore} range={ranges.spamScore} inverted format={(v) => `${v}%`} />
-            ),
-        },
-        {
-            id: 'price',
-            header: 'Price',
-            numeric: true,
-            sortable: true,
-            cell: (site) => <span className="num font-medium text-ink-900">{money(site.priceMinorUnits)}</span>,
-        },
-        {
-            id: 'actions',
-            header: '',
-            width: '120px',
-            cell: () => <Button size="sm">Add to cart</Button>,
-        },
-    ];
+    // The skeletons need to know a request is in flight, and Inertia is the
+    // only thing that knows. Scoped to catalog visits so a cart POST elsewhere
+    // on the page does not blank the results.
+    useEffect(() => {
+        const started = router.on('start', (event) => {
+            if (event.detail.visit.url.pathname === '/catalog') setLoading(true);
+        });
+        const finished = router.on('finish', () => setLoading(false));
+
+        return () => {
+            started();
+            finished();
+        };
+    }, []);
+
+    const appliedCount = useMemo(() => countApplied(state), [state]);
+    const view = state.view ?? 'table';
+
+    const rail = (
+        <FilterRail
+            filters={state}
+            facets={facets}
+            ranges={ranges}
+            options={options}
+            hasProject={project !== null}
+            apply={apply}
+            applyDebounced={applyDebounced}
+        />
+    );
 
     return (
         <AppShell title="Catalog" crumbs={[{ label: 'Catalog of websites' }]}>
-            <Head title="Catalog" />
+            <Head title="Catalog of websites" />
 
             <div className="flex flex-col gap-4">
-                <DataGridToolbar
-                    search={search}
-                    onSearchChange={setSearch}
-                    searchPlaceholder="Search sites"
-                    selectedCount={selected.length}
-                    onClearSelection={() => setSelected([])}
-                    bulkActions={<Button size="sm">Add {selected.length} to cart</Button>}
-                />
+                <ProjectBar project={project} projects={projects} query={{ ...state, project: undefined }} />
 
-                <Table
-                    density="catalog"
-                    stickyFirstColumn
-                    columns={columns}
-                    rows={sites.data}
-                    rowKey={(site) => String(site.id)}
-                    sort={sort}
-                    onSortChange={setSort}
-                    selectedKeys={selected}
-                    onSelectionChange={setSelected}
-                    empty={
-                        <EmptyState
-                            illustration={<SearchIcon size={32} />}
-                            direction="No sites match these filters. Widen the traffic or price range to see more."
-                            action={
-                                <Button variant="secondary" onClick={() => setSearch('')}>
-                                    Clear filters
-                                </Button>
-                            }
+                <div className="flex gap-6">
+                    {/* Sticky, and its own scroll: fourteen sections are taller
+                        than a viewport, and a rail that scrolls the page away
+                        from the results it is filtering is a rail you cannot
+                        use while looking at them. */}
+                    <aside className="hidden w-[280px] shrink-0 rail:block">
+                        <div className="sticky top-[calc(theme(spacing.header)+1rem)] max-h-[calc(100vh-theme(spacing.header)-2rem)] overflow-y-auto rounded-card border border-subtle bg-card px-4 shadow-card">
+                            {rail}
+                        </div>
+                    </aside>
+
+                    <div className="flex min-w-0 flex-1 flex-col gap-4">
+                        <CatalogToolbar
+                            total={total}
+                            filters={state}
+                            options={options}
+                            appliedCount={appliedCount}
+                            apply={apply}
+                            onOpenFilters={() => setRailOpen(true)}
                         />
-                    }
-                />
 
-                <Pagination
-                    page={sites.current_page}
-                    pageCount={sites.last_page}
-                    total={sites.total}
-                    perPage={sites.per_page}
-                    onPageChange={(page) => router.get('/catalog', { page }, { preserveState: true })}
-                />
+                        <AppliedChips filters={state} facets={facets} options={options} apply={apply} clear={clear} />
+
+                        {sites.length === 0 && !loading ? (
+                            <Empty isFiltering={isFiltering} suggestions={suggestions} onClear={clear} />
+                        ) : view === 'cards' ? (
+                            <CatalogCards
+                                sites={sites}
+                                ranges={ranges}
+                                projectId={project?.id ?? null}
+                                loading={loading}
+                                onOpenDetail={setDrawerFor}
+                            />
+                        ) : (
+                            <CatalogTable
+                                sites={sites}
+                                ranges={ranges}
+                                projectId={project?.id ?? null}
+                                loading={loading}
+                                onOpenDetail={setDrawerFor}
+                            />
+                        )}
+
+                        <Pager pagination={pagination} sites={sites.length} apply={apply} />
+                    </div>
+                </div>
             </div>
+
+            {/* Below 1100px the rail becomes this. Same component, so the two
+                cannot drift apart. */}
+            <Drawer open={railOpen} onClose={() => setRailOpen(false)} title="Filters">
+                {rail}
+            </Drawer>
+
+            <SiteDrawer
+                site={drawerFor}
+                projectId={project?.id ?? null}
+                ranges={ranges}
+                onClose={() => setDrawerFor(null)}
+            />
         </AppShell>
     );
+}
+
+/**
+ * Two empty states, because they mean opposite things.
+ *
+ * Filters and no results is an ordinary outcome with an obvious next step. No
+ * filters and no results means the catalog itself is empty, which is not
+ * something a buyer can fix by clicking anything — so that one says so and
+ * points at a person.
+ */
+function Empty({
+    isFiltering,
+    suggestions,
+    onClear,
+}: {
+    isFiltering: boolean;
+    suggestions: CatalogSuggestion[];
+    onClear: () => void;
+}) {
+    if (!isFiltering) {
+        return (
+            <EmptyState
+                illustration={<SearchIcon size={26} />}
+                direction="The catalog is not loading right now"
+                body="This is not something you have filtered away — there are no sites to show at all. That is on us. Tell support and we will look into it straight away."
+                action={
+                    <a href="mailto:support@publinza.pro?subject=Catalog%20is%20empty">
+                        <Button size="lg">Contact support</Button>
+                    </a>
+                }
+            />
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-4">
+            <EmptyState
+                illustration={<SearchIcon size={26} />}
+                direction="No sites match these filters"
+                action={
+                    <Button variant="secondary" onClick={onClear}>
+                        Clear all filters
+                    </Button>
+                }
+            />
+
+            {suggestions.length > 0 && (
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {suggestions.map((suggestion) => (
+                        <li key={suggestion.label}>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    router.get('/catalog', toPayload(suggestion.query), {
+                                        preserveState: true,
+                                        preserveScroll: true,
+                                    })
+                                }
+                                className="flex h-full w-full flex-col gap-1 rounded-card border border-subtle bg-card p-4 text-left hover:border-strong"
+                            >
+                                <span className="text-base font-medium text-ink-900">{suggestion.label}</span>
+                                <span className="num text-sm text-ink-500">
+                                    to see {number(suggestion.count)} {suggestion.count === 1 ? 'site' : 'sites'}
+                                </span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Cursor paging.
+ *
+ * Cursors rather than page numbers because the catalog is sorted by figures
+ * that move — a site's traffic changing between two clicks shifts every offset
+ * after it, and the buyer sees a row twice or not at all. A cursor names a row.
+ */
+function Pager({
+    pagination,
+    sites,
+    apply,
+}: {
+    pagination: CatalogPagination;
+    sites: number;
+    apply: (patch: Partial<CatalogFilterState>) => void;
+}) {
+    if (pagination.previousCursor === null && pagination.nextCursor === null) return null;
+
+    return (
+        <nav className="flex items-center justify-between gap-3" aria-label="Catalog pages">
+            <Button
+                variant="secondary"
+                disabled={pagination.previousCursor === null}
+                onClick={() => apply({ cursor: pagination.previousCursor ?? undefined })}
+            >
+                Previous
+            </Button>
+
+            <p className="num text-sm text-ink-500">{number(sites)} on this page</p>
+
+            <Button
+                variant="secondary"
+                disabled={pagination.nextCursor === null}
+                onClick={() => apply({ cursor: pagination.nextCursor ?? undefined })}
+            >
+                Next
+            </Button>
+        </nav>
+    );
+}
+
+/** What the Filters button's badge counts: applied groups, not values. */
+function countApplied(filters: CatalogFilterState): number {
+    const groups: (keyof CatalogFilterState)[] = [
+        'q',
+        'domain',
+        'categories',
+        'countries',
+        'languages',
+        'price',
+        'traffic',
+        'dr',
+        'da',
+        'max_spam',
+        'speed',
+        'link_type',
+        'topics',
+        'favorites',
+        'unused',
+        'has_traffic',
+    ];
+
+    return groups.filter((key) => {
+        const value = filters[key];
+
+        return Array.isArray(value) ? value.length > 0 : value !== undefined && value !== false;
+    }).length;
 }
