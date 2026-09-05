@@ -1400,6 +1400,118 @@ fake money path beside a working one.
 
 ---
 
+## Add post — the wizard
+
+A four-step modal launched from the dashboard, the post manager, a project's
+posts tab and the sidebar. It is the same purchase as the catalog's, entered from
+the post side rather than the site side.
+
+### It converges on a cart line
+
+`AddPostToCart` is the whole point. The catalog enters the purchase from the site
+end and the wizard from the post end, and both finish at a `cart_items` row — so
+there is one thing to price, one set of warnings, one checkout and one order path.
+A second table for "posts being composed" would have needed its own copy of all of
+that, and the two copies would have disagreed inside a month.
+
+"Add to cart" leaves the line there with everything else. "Place order now" runs
+the same `PlaceOrder` transaction over that one line: it gained an optional
+`itemIds`, and a subset order deletes only what it bought. That is what makes
+"buy this one now" safe to offer somebody halfway through assembling a larger
+order.
+
+A subset order deliberately does **not** spend the cart's promo code. These codes
+are one per advertiser, and burning one on a single placement the buyer did not
+choose to spend it on is worse than not applying it — so the code stays on the
+cart for the order they are still assembling.
+
+### A modal, not a route
+
+Somebody looking at their posts who wants one more should end up back at their
+posts, not on a URL they now have to navigate out of. So it is one modal mounted
+once above every page, opened through a context — four copies would be four places
+for the steps to drift apart, and a modal living inside a page could not be opened
+from the sidebar at all.
+
+The provider sits in `main.tsx` beside `ToastProvider`, for the reason the comment
+there already records: every page renders its own `AppShell`, so a provider inside
+the shell is a *descendant* of the page and a page calling the hook would miss it.
+
+### Back never loses anything, by construction
+
+One state object. The steps render from it and own no fields of their own, so going
+back changes which step is visible and nothing else. There is no save-and-restore
+to get wrong because there is nothing to restore.
+
+### The draft, and the ten seconds
+
+Autosave is a ten-second interval, not a debounce on every keystroke. The draft is
+insurance against a closed tab, not a collaborative document — a request behind
+every character of a 5,000-word brief buys a guarantee nobody needs that finely. It
+is fire-and-forget: a failed save never interrupts, and the next tick tries again.
+
+`post_drafts` is its own table for the same reason `project_drafts` is: a `draft`
+row inside `posts` would land in every query that lists, counts or bills posts, and
+`PostStatus::Draft` already means something real and different — a bought placement
+waiting on its article.
+
+Closing mid-flow is a fork, not a confirmation: one branch keeps the work and one
+throws it away, and neither is obviously the default, so both are named buttons.
+The dashboard's "Continue where you left off" card names the site and the project
+rather than saying "an unfinished post", because the first thing anybody wants to
+know is whether it is worth the click.
+
+### Step 2 is the catalog at picker size
+
+Four filters and a search box, not fourteen, running the same `SearchCatalog` on
+the same `CatalogFilters` parsed the same way — so a site found here is findable
+there, and "Open the full catalog" hands over a query string that reproduces
+exactly what the picker was showing.
+
+The project's targeting narrows the list before anybody types, and the seeded
+category is surfaced into its own visible control. Left implicit on the server it
+would stop applying the moment anything else was filtered, because `seededFrom`
+yields to an explicit filter — so adding a filter would *widen* the list, which is
+the opposite of what a filter does.
+
+### Two judgement calls worth stating
+
+**Same-domain validation warns, it does not block.** A target URL on a different
+host than the project's site is nine times out of ten a URL pasted from the wrong
+tab — but a campaign microsite or a partner page is a real thing to want, and only
+the advertiser knows which case this is. So it is rendered in the warning tone, it
+says "that is allowed", and Continue stays enabled.
+
+**Word-count tiers are lengths, not products.** `websites.word_count_tiers` is a
+list of word counts the publisher will write to, and the select renders only where
+a publisher has offered one — most have not. It carries no price: a publisher who
+writes 1,500 words for the same fee as 800 is offering a choice, and pricing it
+would mean teaching the whole money path a new kind of line item for a difference
+the publisher is absorbing. A requested length below the site's minimum is clamped
+up rather than accepted, because 400 words against an 800-word minimum is a
+placement that comes back rejected days later.
+
+### Three bugs this surfaced
+
+**The wizard addressed sites by id where the route key is `slug`.** The picker row
+carries both; the detail fetch used the numeric id and silently 404ed, which took
+out the summary strip, the word minimum and the length select in one go. It now
+carries the slug for the route and the id for the submit — each used where its own
+form belongs.
+
+**The autosave outlived the order.** The modal stayed mounted after a successful
+submit, so ten seconds later its interval wrote back the draft the server had just
+deleted — and the dashboard offered to resume a post that was already bought. The
+provider now unmounts the modal when it closes, and the hook is told when its
+answers have become a real line.
+
+**Two toasts for one event.** The wizard showed its own toast and the server
+flashed a second saying the same thing. `ToastMessage` gained an optional `action`
+so the wizard's can carry the "Open cart" link the flash system cannot, and that
+one path no longer flashes.
+
+---
+
 ## Layout
 
 ```

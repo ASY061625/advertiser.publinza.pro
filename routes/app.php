@@ -18,6 +18,7 @@ use App\Http\Controllers\Advertiser\ExportController;
 use App\Http\Controllers\Advertiser\MessageController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\PostGridController;
+use App\Http\Controllers\Advertiser\PostWizardController;
 use App\Http\Controllers\Advertiser\ProjectController;
 use App\Http\Controllers\Advertiser\ProjectFolderController;
 use App\Http\Controllers\Advertiser\SearchController;
@@ -173,6 +174,24 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->name('checkout.article.destroy');
     Route::get('/checkout/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/{order}/invoice', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
+
+    /*
+    | The add-post wizard. All JSON but the submit: it is a modal over whatever
+    | the advertiser was already doing, and it returns them to it.
+    |
+    | These sit above /posts/{post} for the same reason the grid's endpoints do
+    | — "wizard" would otherwise be resolved as a post id.
+    */
+    Route::get('/posts/wizard/options', [PostWizardController::class, 'options'])->name('posts.wizard.options');
+    Route::get('/posts/wizard/websites', [PostWizardController::class, 'websites'])
+        ->middleware('throttle:120,1')
+        ->name('posts.wizard.websites');
+    Route::get('/posts/wizard/websites/{website}', [PostWizardController::class, 'website'])
+        ->name('posts.wizard.website');
+    Route::patch('/posts/wizard/draft', [PostWizardController::class, 'saveDraft'])->name('posts.wizard.draft.save');
+    Route::delete('/posts/wizard/draft', [PostWizardController::class, 'discardDraft'])
+        ->name('posts.wizard.draft.discard');
+    Route::post('/posts/wizard', [PostWizardController::class, 'store'])->name('posts.wizard.store');
 
     // Literal segments before the {project} wildcard, or "view" is resolved
     // as a project id.

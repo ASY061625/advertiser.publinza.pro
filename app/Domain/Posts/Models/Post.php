@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $published_at
  * @property Carbon|null $deadline_at
  * @property Carbon|null $frozen_until
+ * @property array<string, mixed>|null $brief
  */
 class Post extends Model
 {
@@ -54,6 +55,7 @@ class Post extends Model
         'anchor_text',
         'target_url',
         'content_mode',
+        'brief',
         'article_id',
         'price_cents',
         'frozen_until',
@@ -71,6 +73,7 @@ class Post extends Model
         return [
             'status' => PostStatus::class,
             'content_mode' => ContentMode::class,
+            'brief' => 'array',
             'price_cents' => 'integer',
             'price' => MoneyCast::class,
             'frozen_until' => 'datetime',

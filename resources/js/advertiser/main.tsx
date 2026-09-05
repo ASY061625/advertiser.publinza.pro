@@ -3,6 +3,7 @@ import '../../css/globals.css';
 import { createInertiaApp } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 import { ToastProvider } from '@shared/ui';
+import { AddPostProvider } from './Components/post-wizard/AddPostProvider';
 
 /**
  * advertiser entry point.
@@ -28,9 +29,15 @@ void createInertiaApp({
         // <AppShell>, so a provider in there is a *descendant* of the page
         // component — a page calling useToast() would throw, which is exactly
         // what /posts did until this moved up here.
+        // The add-post wizard is mounted once, above every page, so the
+        // sidebar's quick action opens the same modal the dashboard and the
+        // post manager do — and so a page calling useAddPost() is inside the
+        // provider rather than a parent of it.
         createRoot(el).render(
             <ToastProvider>
-                <App {...props} />
+                <AddPostProvider>
+                    <App {...props} />
+                </AddPostProvider>
             </ToastProvider>,
         );
     },

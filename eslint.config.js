@@ -71,6 +71,11 @@ export default tseslint.config(
             // rule was written; the rule means "the catalog", and the catalog
             // is now a page plus the pieces it is built from.
             'resources/js/advertiser/Components/catalog/**/*.tsx',
+            // The add-post wizard's step 2 is the catalog at picker size —
+            // the same search, the same filters, the same rows. A bar that
+            // meant something different inside the modal than outside it
+            // would be worse than no bar.
+            'resources/js/advertiser/Components/post-wizard/**/*.tsx',
             'resources/js/shared/ui/QuantBar.tsx',
             'resources/js/advertiser/Components/design-system/**/*.tsx',
         ],

@@ -23,6 +23,7 @@ import { DealsPanel } from '../../Components/projects/general/DealsPanel';
 import { FinancePanel } from '../../Components/projects/general/FinancePanel';
 import { FirstDealCard } from '../../Components/projects/general/FirstDealCard';
 import { FoldersSection } from '../../Components/projects/general/FoldersSection';
+import { useAddPost } from '../../Components/post-wizard/AddPostProvider';
 
 interface Props {
     project: ProjectDetail;
@@ -160,6 +161,7 @@ function PostManagement({
     // choice about this minute, and a remembered board is a surprise on the
     // next visit. The table is where everyone starts.
     const [view, setView] = useState<PostsView>('table');
+    const addPost = useAddPost();
 
     return (
         <PostsGrid
@@ -195,9 +197,9 @@ function PostManagement({
                         body="Choose a site in the catalog, add your anchor and link, and we’ll handle the placement."
                         action={
                             <span className="flex flex-wrap items-center justify-center gap-2">
-                                <Link href={`/catalog?project=${project.id}&intent=add-post`}>
-                                    <Button size="lg">Add post</Button>
-                                </Link>
+                                <Button size="lg" onClick={() => addPost.open({ projectId: project.id })}>
+                                    Add post
+                                </Button>
                                 <Link href={`/catalog?project=${project.id}`}>
                                     <Button size="lg" variant="secondary">
                                         Find a website

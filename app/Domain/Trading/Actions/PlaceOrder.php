@@ -21,6 +21,7 @@ use App\Domain\Trading\Support\CartPricer;
 use App\Models\User;
 use App\Notifications\OrderPlacedNotification;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Checkout, as one transaction.
@@ -51,19 +52,31 @@ final class PlaceOrder
 
     /**
      * @param  array<string, mixed>  $billing
+     * @param  list<int>|null  $itemIds  Places only these lines, leaving the rest
+     *                                   of the cart alone. Null buys the whole cart.
      */
-    public function handle(User $user, Cart $cart, array $billing): Order
+    public function handle(User $user, Cart $cart, array $billing, ?array $itemIds = null): Order
     {
-        $order = DB::transaction(function () use ($user, $cart, $billing): Order {
+        $order = DB::transaction(function () use ($user, $cart, $billing, $itemIds): Order {
             // Re-read under the transaction. A line the buyer removed in
             // another tab while the checkout was open must not be bought.
             $items = $cart->items()
+                ->when($itemIds !== null, fn ($query) => $query->whereIn('id', $itemIds ?? []))
                 ->with(['website.prices', 'project', 'folder'])
                 ->lockForUpdate()
                 ->get();
 
+            if ($items->isEmpty()) {
+                throw new RuntimeException('There is nothing here to order.');
+            }
+
             $subtotal = $this->pricer->sum($items);
-            $promo = $this->redeemablePromo($cart, $user, $subtotal);
+            // A promo belongs to the cart the advertiser assembled, so a
+            // one-line order placed from the add-post wizard does not spend it.
+            // These codes are one per advertiser, and burning one on a single
+            // placement they did not choose to spend it on is worse than not
+            // applying it.
+            $promo = $itemIds === null ? $this->redeemablePromo($cart, $user, $subtotal) : null;
             $discount = $promo?->discountFor($subtotal) ?? Money::zero();
             $total = $subtotal->minus($discount);
 
@@ -106,8 +119,14 @@ final class PlaceOrder
 
             $this->issueInvoice($order, $user, $billing);
 
-            $cart->items()->delete();
-            $cart->update(['promo_code_id' => null]);
+            // Only what was bought. A subset order leaves the rest of the cart
+            // exactly as it was, which is what makes "place this one now" a
+            // safe thing to offer somebody mid-assembly.
+            $cart->items()->whereIn('id', $items->pluck('id'))->delete();
+
+            if ($itemIds === null) {
+                $cart->update(['promo_code_id' => null]);
+            }
 
             return $order;
         });
@@ -141,6 +160,10 @@ final class PlaceOrder
             'anchor_text' => $item->anchor_text,
             'target_url' => $item->target_url,
             'content_mode' => $item->content_mode,
+            // The instructions travel with the placement. A publisher who is
+            // writing the article needs the brief attached to the post, not
+            // left behind in a cart row that is about to be deleted.
+            'brief' => $item->brief,
             'price_cents' => $this->pricer->total($item)->cents,
             'deadline_at' => now()->addHours($hours),
         ]);

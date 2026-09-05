@@ -5,6 +5,7 @@ import type { ProjectDetail, ProjectPostMix, ProjectTabId } from '@shared/types/
 import { AppShell } from './AppShell';
 import { DeleteProjectDialog } from '../Components/projects/DeleteProjectDialog';
 import { projectDot } from '../Components/projects/ProjectIdentity';
+import { useAddPost } from '../Components/post-wizard/AddPostProvider';
 
 interface Props {
     project: ProjectDetail;
@@ -37,6 +38,7 @@ const TABS: { id: ProjectTabId; label: string }[] = [
 ];
 
 export function ProjectLayout({ project, tab, postMix, children }: Props) {
+    const addPost = useAddPost();
     const [deleting, setDeleting] = useState(false);
 
     const items: TabItem[] = TABS.map((item) => ({
@@ -93,9 +95,9 @@ export function ProjectLayout({ project, tab, postMix, children }: Props) {
                         <Button>Find a website</Button>
                     </Link>
 
-                    <Link href={`/catalog?project=${project.id}&intent=add-post`}>
-                        <Button variant="secondary">Add post</Button>
-                    </Link>
+                    <Button variant="secondary" onClick={() => addPost.open({ projectId: project.id })}>
+                        Add post
+                    </Button>
 
                     <Dropdown
                         trigger={<IconButton label="More project actions" icon={<MoreIcon size={18} />} />}

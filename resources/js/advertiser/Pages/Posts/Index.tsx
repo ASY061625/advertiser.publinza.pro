@@ -4,6 +4,7 @@ import { Button, DownloadIcon, EmptyState, PlusIcon } from '@shared/ui';
 import { number } from '@shared/lib/format';
 import type { Paginated } from '@shared/types';
 import type { ColumnPreferences, PostFilterState, PostOptions, PostRow, SavedViewRecord } from '@shared/types/posts';
+import { useAddPost } from '../../Components/post-wizard/AddPostProvider';
 import { PostsGrid, postsExportHref } from '../../Components/posts/PostsGrid';
 
 interface Props {
@@ -35,6 +36,7 @@ export default function PostsIndex({
     savedViews,
 }: Props) {
     const empty = !hasAnyPosts && !isFiltering;
+    const addPost = useAddPost();
 
     return (
         <AppShell title="Posts">
@@ -59,12 +61,10 @@ export default function PostsIndex({
                         <DownloadIcon size={14} />
                         Export CSV
                     </Button>
-                    <Link href="/posts/create">
-                        <Button>
-                            <PlusIcon size={14} />
-                            Add post
-                        </Button>
-                    </Link>
+                    <Button onClick={() => addPost.open()}>
+                        <PlusIcon size={14} />
+                        Add post
+                    </Button>
                 </div>
             </header>
 
@@ -84,9 +84,9 @@ export default function PostsIndex({
                             direction="Time to add your first post!"
                             action={
                                 <span className="flex flex-col items-center gap-3">
-                                    <Link href="/posts/create">
-                                        <Button size="lg">Add post</Button>
-                                    </Link>
+                                    <Button size="lg" onClick={() => addPost.open()}>
+                                        Add post
+                                    </Button>
                                     <Link
                                         href="/catalog"
                                         className="text-sm font-medium text-brand underline underline-offset-2"

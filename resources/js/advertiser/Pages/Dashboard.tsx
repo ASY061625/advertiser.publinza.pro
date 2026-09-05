@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { money, number } from '@shared/lib/format';
 import { Button, Card, CartIcon, FolderIcon, GlobeIcon, ListIcon, SparkleIcon, StatCard, WalletIcon } from '@shared/ui';
 import type { DashboardMetrics, Granularity, Stat } from '@shared/types/dashboard';
+import type { PostDraftCard } from '@shared/types/postWizard';
 import { AppShell } from '../Layouts/AppShell';
 import { DateRangeControl, type RangeSelection } from '../Components/dashboard/DateRangeControl';
 import { EmptyRangeState, NoPostsState, NoProjectsState } from '../Components/dashboard/DashboardEmptyStates';
@@ -13,6 +14,7 @@ import {
     StatusSkeleton,
     TableSkeleton,
 } from '../Components/dashboard/DashboardSkeletons';
+import { ResumeDraftCard } from '../Components/post-wizard/ResumeDraftCard';
 import { PostsByStatus } from '../Components/dashboard/PostsByStatus';
 import { RecentPosts } from '../Components/dashboard/RecentPosts';
 import { SpendPlacementsChart } from '../Components/dashboard/SpendPlacementsChart';
@@ -22,6 +24,8 @@ import { UpcomingDeadlines } from '../Components/dashboard/UpcomingDeadlines';
 interface DashboardProps {
     firstName: string;
     metrics: DashboardMetrics;
+    /** An interrupted add-post wizard, if there is one to resume. */
+    postDraft: PostDraftCard | null;
 }
 
 const STAT_ORDER: {
@@ -37,7 +41,7 @@ const STAT_ORDER: {
     { key: 'liveLinks', label: 'Live links', icon: <GlobeIcon size={16} /> },
 ];
 
-export default function Dashboard({ firstName, metrics: initial }: DashboardProps) {
+export default function Dashboard({ firstName, metrics: initial, postDraft }: DashboardProps) {
     const [metrics, setMetrics] = useState(initial);
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -146,6 +150,15 @@ export default function Dashboard({ firstName, metrics: initial }: DashboardProp
                     />
                 )}
             </header>
+
+            {/* Above the metrics, because it is a thing to finish rather than a
+                thing to read, and a card below six stat tiles is a card people
+                scroll past. */}
+            {postDraft !== null && (
+                <div className="mt-6">
+                    <ResumeDraftCard draft={postDraft} />
+                </div>
+            )}
 
             {failed && (
                 <div className="mt-6 flex items-center justify-between gap-4 rounded-card border border-subtle bg-danger-bg px-4 py-3">

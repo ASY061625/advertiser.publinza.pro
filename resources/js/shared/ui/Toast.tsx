@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@shared/lib/cn';
@@ -11,6 +12,14 @@ export interface ToastMessage {
     /** Reports what happened, in the past tense: "Published", "Balance topped up". */
     title: string;
     description?: string;
+    /**
+     * One link, for the thing somebody would do next.
+     *
+     * "Added to your cart" is only half an answer without a way to the cart —
+     * and a toast is where that offer belongs, because the alternative is
+     * redirecting somebody off the page they were working on.
+     */
+    action?: { label: string; href: string };
     duration?: number;
 }
 
@@ -95,6 +104,16 @@ export function Toast({ message, onDismiss }: { message: ToastMessage; onDismiss
             <div className="min-w-0 flex-1">
                 <p className="font-sora text-base font-medium text-ink-900">{message.title}</p>
                 {message.description && <p className="mt-0.5 text-base text-ink-500">{message.description}</p>}
+
+                {message.action && (
+                    <Link
+                        href={message.action.href}
+                        onClick={() => onDismiss(id)}
+                        className="mt-1.5 inline-block font-sora text-sm font-medium text-brand hover:underline"
+                    >
+                        {message.action.label}
+                    </Link>
+                )}
             </div>
 
             <button

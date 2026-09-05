@@ -14,11 +14,12 @@ export interface ModalProps {
     children?: ReactNode;
     /** Buttons, right-aligned. Primary action last. */
     footer?: ReactNode;
-    size?: 'sm' | 'md' | 'lg';
+    /** xl is for multi-step flows — a wizard step needs room a dialog does not. */
+    size?: 'sm' | 'md' | 'lg' | 'xl';
     className?: string;
 }
 
-const SIZES = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' } as const;
+const SIZES = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' } as const;
 
 export function Modal({ open, onClose, title, description, children, footer, size = 'md', className }: ModalProps) {
     const trapRef = useFocusTrap<HTMLDivElement>(open);

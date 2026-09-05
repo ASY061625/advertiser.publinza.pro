@@ -29,6 +29,7 @@ use Laravel\Scout\Searchable;
  * @property bool $accepts_images
  * @property bool $accepts_embeds
  * @property Carbon|null $domain_registered_at
+ * @property array<int, int>|null $word_count_tiers
  */
 class Website extends Model
 {
@@ -54,6 +55,7 @@ class Website extends Model
         'links_allowed',
         'max_links',
         'min_words',
+        'word_count_tiers',
         'sample_url',
         'guidelines',
         'marks_sponsored',
@@ -77,6 +79,7 @@ class Website extends Model
             'link_guarantee_months' => 'integer',
             'domain_registered_at' => 'date',
             'accepts_sensitive_topics' => 'array',
+            'word_count_tiers' => 'array',
             'link_type' => LinkType::class,
             'publication_period_hours' => 'integer',
             'links_allowed' => 'integer',

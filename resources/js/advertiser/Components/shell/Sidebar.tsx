@@ -1,7 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { cn } from '@shared/lib/cn';
-import { FolderIcon, GlobeIcon, HomeIcon, ListIcon, PanelLeftIcon, Tooltip } from '@shared/ui';
+import { FolderIcon, GlobeIcon, HomeIcon, ListIcon, PanelLeftIcon, PlusIcon, Tooltip } from '@shared/ui';
 import type { ShellProject } from '@shared/types/shell';
+import { useAddPost } from '../post-wizard/AddPostProvider';
 import { ProjectSwitcher } from './ProjectSwitcher';
 
 interface SidebarProps {
@@ -33,6 +34,7 @@ export function Sidebar({
     mobile = false,
 }: SidebarProps) {
     const isCollapsed = collapsed && !mobile;
+    const addPost = useAddPost();
 
     function hrefFor(item: (typeof NAV)[number]): string {
         return item.scoped && activeProjectId !== null ? `${item.href}?project=${activeProjectId}` : item.href;
@@ -50,6 +52,25 @@ export function Sidebar({
                 <Link href="/dashboard" className="font-sora text-md font-semibold text-ink-900">
                     {isCollapsed ? 'P' : 'Publinza'}
                 </Link>
+            </div>
+
+            {/* The quick action, above the nav rather than inside it: it is a
+                thing to do, not a place to go, and a button that looks like a
+                nav item gets read as one. */}
+            <div className={cn('px-3 pb-1', isCollapsed && 'px-2')}>
+                <button
+                    type="button"
+                    onClick={() => addPost.open({ projectId: activeProjectId })}
+                    title={isCollapsed ? 'Add post' : undefined}
+                    className={cn(
+                        'flex h-9 w-full items-center justify-center gap-2 rounded-button bg-brand font-sora text-sm font-medium text-white',
+                        'transition-colors duration-fast ease-standard hover:bg-brand-hover active:bg-brand-pressed',
+                    )}
+                >
+                    <PlusIcon size={16} />
+                    {!isCollapsed && 'Add post'}
+                    {isCollapsed && <span className="sr-only">Add post</span>}
+                </button>
             </div>
 
             <nav aria-label="Main" className="flex flex-col gap-1 px-3 py-2">

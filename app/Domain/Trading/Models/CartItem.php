@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $express
  * @property array<int, string>|null $dismissed_warnings
  * @property int|null $article_word_count
+ * @property array<string, mixed>|null $brief
  */
 class CartItem extends Model
 {
@@ -53,6 +54,8 @@ class CartItem extends Model
         'article_body_html',
         'article_word_count',
         'article_file_path',
+        'brief',
+        'image_path',
     ];
 
     /**
@@ -69,6 +72,7 @@ class CartItem extends Model
             'addons' => 'array',
             'dismissed_warnings' => 'array',
             'article_word_count' => 'integer',
+            'brief' => 'array',
         ];
     }
 
