@@ -29,7 +29,7 @@ class ShellCountsChanged implements ShouldBroadcast
     use SerializesModels;
 
     /**
-     * @param  list<string>  $scopes  Any of: cart, conversations, changelog, favorites.
+     * @param  list<string>  $scopes  Any of: cart, conversations, changelog, favorites, balance.
      */
     public function __construct(
         public readonly User $user,

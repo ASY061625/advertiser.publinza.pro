@@ -6,7 +6,7 @@ import type { User } from '@shared/types';
 const LINKS = [
     { label: 'Account settings', href: '/settings/account' },
     { label: 'Company details', href: '/settings/company' },
-    { label: 'Billing', href: '/billing' },
+    { label: 'Balance & billing', href: '/balance' },
     { label: 'API keys', href: '/settings/api-keys' },
 ];
 

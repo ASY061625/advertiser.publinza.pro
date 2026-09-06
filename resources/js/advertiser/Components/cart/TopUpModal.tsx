@@ -1,4 +1,5 @@
-import { useForm } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
+import { useState } from 'react';
 import { Button, Input, Modal } from '@shared/ui';
 import { money } from '@shared/lib/format';
 
@@ -12,16 +13,20 @@ interface Props {
 const PRESETS = [10_000, 25_000, 50_000, 100_000];
 
 /**
- * Topping up without leaving the cart.
+ * Choosing how much to add, without leaving the cart.
  *
  * The amount is prefilled with the shortfall, rounded up to whole dollars,
- * because that is the number the buyer came here for. Sending them to the
- * billing page to work it out themselves is how a cart becomes an abandoned
- * cart.
+ * because that is the number the buyer came here for. Working it out on the
+ * balance page is how a cart becomes an abandoned cart.
+ *
+ * It picks the figure and hands off. It used to post the top-up itself, which
+ * meant money moved from a two-field modal that never asked how it was being
+ * paid — the amount is a decision that can be made here, but the payment method
+ * and the summary that shows the fee and the bonus cannot.
  */
 export function TopUpModal({ open, onClose, suggestedCents }: Props) {
     const suggested = Math.ceil(suggestedCents / 100);
-    const form = useForm({ amount: suggested > 0 ? String(suggested) : '', reference: 'cart' });
+    const [amount, setAmount] = useState(suggested > 0 ? String(suggested) : '');
 
     return (
         <Modal
@@ -29,25 +34,18 @@ export function TopUpModal({ open, onClose, suggestedCents }: Props) {
             onClose={onClose}
             size="sm"
             title="Top up your balance"
-            description="Added to your available balance straight away. Nothing is charged to a placement until you check out."
+            description="Pick an amount and we'll take you to payment. Nothing is charged to a placement until you check out."
             footer={
                 <>
                     <Button variant="secondary" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button
-                        loading={form.processing}
-                        disabled={form.data.amount === ''}
-                        onClick={() =>
-                            form.post('/billing/top-up', {
-                                preserveScroll: true,
-                                preserveState: false,
-                                onSuccess: onClose,
-                            })
-                        }
+                    <Link
+                        href={`/balance?tab=top-up${amount === '' ? '' : `&amount=${amount}`}`}
+                        onClick={onClose}
                     >
-                        Add funds
-                    </Button>
+                        <Button disabled={amount === ''}>Continue to payment</Button>
+                    </Link>
                 </>
             }
         >
@@ -57,9 +55,8 @@ export function TopUpModal({ open, onClose, suggestedCents }: Props) {
                     type="number"
                     min={1}
                     step="0.01"
-                    value={form.data.amount}
-                    error={form.errors.amount}
-                    onChange={(event) => form.setData('amount', event.target.value)}
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
                     hint={
                         suggestedCents > 0
                             ? `${money(suggestedCents)} covers what this order is short.`
@@ -72,7 +69,7 @@ export function TopUpModal({ open, onClose, suggestedCents }: Props) {
                         <button
                             key={preset}
                             type="button"
-                            onClick={() => form.setData('amount', String(preset / 100))}
+                            onClick={() => setAmount(String(preset / 100))}
                             className="num rounded-pill border border-subtle px-3 py-1 text-sm text-ink-700 hover:border-strong hover:bg-sunken"
                         >
                             {money(preset)}

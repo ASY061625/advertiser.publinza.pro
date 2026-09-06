@@ -11,6 +11,7 @@ use App\Domain\Trading\Models\Cart;
 use App\Domain\Trading\Models\CartItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
@@ -33,6 +34,20 @@ function advertiserUrl(string $path = '/'): string
 function adminUrl(string $path = ''): string
 {
     return 'http://'.config('publinza.domains.marketing').'/'.config('publinza.admin_prefix').$path;
+}
+
+/**
+ * The props an Inertia page was rendered with.
+ *
+ * Every feature test that asserts on a page reaches for these, so it lives here
+ * rather than being redeclared per file — which is exactly what two of them did
+ * until the suite refused to boot.
+ *
+ * @return array<string, mixed>
+ */
+function props(TestResponse $response): array
+{
+    return $response->viewData('page')['props'];
 }
 
 /**

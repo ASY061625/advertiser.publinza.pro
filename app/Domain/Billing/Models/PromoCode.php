@@ -6,7 +6,6 @@ namespace App\Domain\Billing\Models;
 
 use App\Casts\MoneyCast;
 use App\Domain\Billing\DTOs\Money;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -25,8 +24,6 @@ use Illuminate\Support\Carbon;
  */
 class PromoCode extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'code', 'description', 'percent_off', 'amount_off_cents', 'minimum_spend_cents',
         'max_redemptions', 'redemptions_count', 'starts_at', 'ends_at', 'is_active',

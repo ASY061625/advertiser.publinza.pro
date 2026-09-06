@@ -104,6 +104,55 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Company details
+    |--------------------------------------------------------------------------
+    |
+    | Ours, as they appear on an invoice. Config rather than a database row
+    | because these change when the company changes, which is a deploy, not a
+    | form somebody fills in.
+    |
+    */
+
+    'company' => [
+        'name' => env('COMPANY_NAME', 'Publinza'),
+        'address' => env('COMPANY_ADDRESS', 'Publinza OÜ, Sepapaja 6, 15551 Tallinn, Estonia'),
+        'vat' => env('COMPANY_VAT', 'VAT EE102938475'),
+        'email' => env('COMPANY_EMAIL', 'billing@publinza.pro'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payments
+    |--------------------------------------------------------------------------
+    |
+    | Which PaymentGateway implementation is bound. `simulated` moves no money
+    | and returns a deterministic outcome per amount, which is what makes the
+    | decline copy testable; `stripe` is the real thing and needs live keys.
+    |
+    | The bank details are what a transfer top-up displays. They are shown to
+    | the payer along with a unique reference, and an admin matches what arrives
+    | against that reference by hand.
+    |
+    */
+
+    'payments' => [
+        'driver' => env('PAYMENTS_DRIVER', 'simulated'),
+
+        // The smallest top-up worth processing: below this the card fee eats it.
+        'minimum_top_up_cents' => (int) env('PAYMENTS_MIN_TOP_UP', 5000),
+
+        'quick_amounts_cents' => [10_000, 25_000, 50_000, 100_000, 250_000],
+
+        'bank' => [
+            'beneficiary' => env('BANK_BENEFICIARY', 'Publinza OÜ'),
+            'iban' => env('BANK_IBAN', 'EE38 2200 2210 6789 1234'),
+            'bic' => env('BANK_BIC', 'HABAEE2X'),
+            'bank_name' => env('BANK_NAME', 'Swedbank AS'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Support hours
     |--------------------------------------------------------------------------
     |

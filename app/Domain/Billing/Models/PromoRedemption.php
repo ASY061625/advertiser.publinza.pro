@@ -6,14 +6,11 @@ namespace App\Domain\Billing\Models;
 
 use App\Casts\MoneyCast;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PromoRedemption extends Model
 {
-    use HasFactory;
-
     public const UPDATED_AT = null;
 
     protected $fillable = ['promo_code_id', 'user_id', 'order_id', 'discount_cents'];

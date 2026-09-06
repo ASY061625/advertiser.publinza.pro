@@ -8,7 +8,7 @@ use App\Http\Controllers\Advertiser\Auth\PasswordResetController;
 use App\Http\Controllers\Advertiser\Auth\SignupController;
 use App\Http\Controllers\Advertiser\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Advertiser\Auth\TwoFactorSettingsController;
-use App\Http\Controllers\Advertiser\BillingController;
+use App\Http\Controllers\Advertiser\BalanceController;
 use App\Http\Controllers\Advertiser\CartController;
 use App\Http\Controllers\Advertiser\CatalogController;
 use App\Http\Controllers\Advertiser\CheckoutController;
@@ -353,6 +353,29 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->whereNumber('thread')
         ->name('messages.show');
 
-    Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
-    Route::post('/billing/top-up', [BillingController::class, 'topUp'])->name('billing.top-up');
+    /*
+    | The advertiser's money.
+    |
+    | Four tabs over one URL: what they hold, how they add to it, where it went,
+    | and the paperwork. The tab is a query parameter so a specific view is
+    | still a link somebody can send, and so switching tabs is a partial reload.
+    |
+    | The static shapes sit above the {invoice} one, so "export" and "top-up"
+    | are never read as an invoice id.
+    */
+    Route::get('/balance', [BalanceController::class, 'index'])->name('balance.index');
+    Route::get('/balance/export', [BalanceController::class, 'export'])->name('balance.export');
+    Route::post('/balance/top-up', [BalanceController::class, 'topUp'])
+        ->middleware('throttle:20,1')
+        ->name('balance.top-up');
+    Route::patch('/balance/auto-top-up', [BalanceController::class, 'updateAutoTopUp'])
+        ->name('balance.auto-top-up');
+    Route::patch('/balance/billing', [BalanceController::class, 'updateBilling'])->name('balance.billing');
+    Route::get('/balance/invoices/{invoice}', [BalanceController::class, 'invoice'])->name('balance.invoice');
+
+    /*
+    | The old address. Kept because it is in the header's balance pill history
+    | and anything anyone bookmarked; it lands on the same page it always meant.
+    */
+    Route::redirect('/billing', '/balance')->name('billing.index');
 });

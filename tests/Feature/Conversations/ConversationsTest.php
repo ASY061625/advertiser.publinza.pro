@@ -18,7 +18,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Testing\TestResponse;
 
 /** A thread with one message from the advertiser. */
 function thread(User $user, array $attributes = [], ?string $body = 'Any news on this?'): Conversation
@@ -50,11 +49,6 @@ function teamReply(Conversation $conversation, string $body = 'Going live on Thu
         'sender_id' => null,
         'body' => $body,
     ]);
-}
-
-function props(TestResponse $response): array
-{
-    return $response->viewData('page')['props'];
 }
 
 // ------------------------------------------------------------------ the page

@@ -1779,6 +1779,173 @@ ever stores its own site marks.
 
 ---
 
+## Balance — `/balance`
+
+The advertiser's money, in four readings of one wallet: Overview, Top up,
+Transactions and Invoices. One URL with the tab in the query string, so a
+finance person can be sent "the transactions page", and so a top-up lands back
+on the overview with the new figure on it rather than on a success page nobody
+needs twice. `/billing` redirects here.
+
+```
+GET   /balance?tab=&types[]=&from=&to=&min=&max=&q=   the page
+GET   /balance/export?format=csv|xlsx                 the filtered ledger
+POST  /balance/top-up                                 add funds
+PATCH /balance/auto-top-up                            the standing rule
+PATCH /balance/billing                                details for future invoices
+GET   /balance/invoices/{invoice}                     one invoice, as a PDF
+```
+
+### The ledger does not sum
+
+The one thing to know before touching this page:
+
+> `SUM(amount_cents)` is **not** the balance, and never was.
+
+`amount_cents` is signed by its effect on the *spendable* balance for a freeze
+(−) and an unfreeze (+), but by its effect on *total holdings* for a charge (−).
+A charge takes money out of the frozen bucket and leaves available untouched, so
+summing the column subtracts every completed placement from a number it never
+touched. Which bucket a row moved money in and out of is carried by its **type**,
+not by its sign.
+
+`LedgerReconciler` therefore folds over the types rather than adding a column,
+and three tests pin it down: the fold reproduces both buckets exactly, it agrees
+with every row's own `balance_after_cents` as the ledger is replayed one row at a
+time, and — deliberately — that the naive sum gives a different answer. That last
+one exists so the next person to "fix" this page by summing the column finds out
+from a test rather than from an advertiser.
+
+### Frozen is not spent
+
+Three cards, and the middle one carries the distinction the whole product turns
+on. Available is what can be spent now. Frozen is committed to open orders — it
+is still the advertiser's, and it comes back if a placement falls through — so it
+is gold, it says "released when links are verified", and it links to the posts
+holding it. Total spent counts **charges only**: counting freezes would tell
+somebody they had spent money they can still get back.
+
+### Topping up
+
+Quick-pick chips, a custom amount with a $50 minimum, and four methods. The
+volume bonus is computed by `VolumeBonus` on the server, stored on the top-up row
+at the moment of payment, and written to the ledger as its own `bonus`
+transaction — so a statement can answer "how much of this balance did I actually
+pay for", and a tier change tomorrow does not rewrite what somebody was promised
+today. The browser mirrors the same tiers for the summary box; the server
+recomputes before it credits anything.
+
+The next-tier nudge only appears when the gap is within reach — double what they
+were already adding, or $500, whichever is more generous. Nobody topping up $100
+wants to hear about $10,000.
+
+**A bank transfer credits nothing.** It is a promise to send money, so the row
+stays pending, the page shows the account details and a unique reference, and an
+admin matches what arrives. Crediting on submit would let anyone type themselves
+a balance. The reference is digits only — no O/0 or I/1 — because it gets read
+down a phone into a bank form, and it is checked against the table rather than
+trusted to chance.
+
+### Declines say what to do next
+
+`DeclineReason` carries a headline *and* advice for all nine cases, plus whether
+retrying the same card could plausibly work. "Your payment failed" tells somebody
+nothing they did not already know; it produces a retry with the same card and
+then a support ticket. An expired card is told to add the replacement; a
+do-not-honor is told that a call to the bank usually clears it in a minute.
+
+The failure keeps the reader on the form with the amount and method still in the
+fields, because the next thing they do is change one of them.
+
+### Payments are a seam, not an integration
+
+`PaymentGateway` is two methods wide — charge, and describe yourself — bound by
+`config('publinza.payments.driver')`. Everything else the page does happens
+either side of one call, so swapping in Stripe touches one class.
+
+The default is `SimulatedGateway`, which moves no money and picks its outcome
+from the amount's **cents**: `$100.14` is an expired card, `$100.00` goes
+through. That is a fix rather than a preference — the triggers were whole dollars
+first, which forced them to be small numbers to stay out of the way of real
+amounts, which put every one of them below the $50 minimum, where the validator
+rejected them and not one decline could be reached. Keying on cents makes every
+reason testable at any size and leaves the round chip amounts alone.
+
+The gateway is never asked to throw for a decline: a declined card is an answer,
+not an exception, and the caller has copy for every reason.
+
+### Auto top-up says when
+
+Three parts — threshold, amount, card — and switching it on needs all three,
+because a half-rule fails at 2am when the balance runs out. A rule whose card was
+later removed reads as *on but not armed*, and says which piece is missing rather
+than silently not firing.
+
+The copy under the fields restates the whole rule in the numbers just typed. A
+standing charge on somebody's card is the single most complained-about feature in
+any product that has one, and every one of those complaints is really "nobody
+told me when".
+
+### Exports and invoices, without a dependency
+
+Both exports run the *filtered* set through `LedgerQuery`, the same object the
+table uses — an export that quietly ignores a filter hands somebody a spreadsheet
+that disagrees with the screen it came from. Amount filters compare magnitudes,
+so "$100 to $500" catches a charge of $250 as well as a deposit of $250.
+
+`composer require dompdf/dompdf` was the plan and it cannot be installed here:
+packagist metadata resolves but every GitHub tarball is 403 under this
+environment's egress policy. It turned out not to matter, because the repo had
+already made this decision — `app/Support/Export/` held a hand-written
+`PdfTableWriter` and `XlsxWriter`. The file-format half of the PDF writer is now
+`PdfCanvas` (objects, pages, the xref table, four drawing operators), shared by
+that table writer and the new `InvoicePdf`.
+
+Invoices carry the brand bar, both parties, per-placement lines with domains and
+anchors, VAT stated even at zero and named as reverse charge, and a paid stamp.
+They are rendered on demand and then kept: the bytes must not change under
+somebody who downloaded one yesterday. Everything on the page comes from the
+invoice's own snapshot, never the live profile — which is why the billing form
+says, before the fields rather than after the save, that changes apply to future
+invoices only.
+
+### Four bugs this surfaced
+
+**Every simulated decline was unreachable.** Described above: the trigger amounts
+sat below the minimum the validator enforces, so the entire decline path — nine
+reasons, nine pieces of copy — had never once rendered.
+
+**A seventeen-placement invoice ran off the page.** Only visible by rendering the
+PDF and looking at it: the line items drew straight over the footer and the
+totals block was never drawn at all. It paginates now, with a continuation
+masthead and a repeated column header.
+
+**The first pagination test proved nothing.** It asserted "more than one page",
+which was already true — the totals block breaks to its own page whether or not
+the lines do — so it passed with line pagination switched off while the rows
+still ran off the sheet. It measures the real invariant now: every text baseline
+in every content stream sits above the footer.
+
+**Two methods called `lines()` on one class.** Adding an address-wrapping helper
+beside the existing line-item renderer was an instant fatal. Caught by `php -l`,
+but it is the kind of thing that reaches production in a language that only
+complains when the file is loaded.
+
+### Two things deliberately not built
+
+`/billing/top-up` used to be posted to from two places — a two-field modal in the
+header pill and another in the cart. Both moved money without anybody choosing a
+payment method or seeing what it would cost. They are links to this page now; the
+cart's still picks the amount, because working out the shortfall on the balance
+page is how a cart becomes an abandoned cart.
+
+The auto top-up rule is stored and shown but nothing sweeps for wallets under
+their threshold yet. That is a scheduled job against the
+`(auto_topup_enabled, available_cents)` index this migration adds, and it belongs
+with the queue work rather than in a page.
+
+---
+
 ## Layout
 
 ```

@@ -88,7 +88,7 @@ export function FinancePanel({ stats }: Props) {
                 </div>
             )}
 
-            <Link href="/billing" className="mt-4 inline-block text-sm font-medium text-brand hover:underline">
+            <Link href="/balance" className="mt-4 inline-block text-sm font-medium text-brand hover:underline">
                 Top up balance
             </Link>
         </section>

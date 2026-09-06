@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Billing\Contracts\PaymentGateway;
+use App\Domain\Billing\Gateways\SimulatedGateway;
 use App\Domain\Posts\Models\Post;
 use App\Observers\PostObserver;
 use Illuminate\Auth\Events\Registered;
@@ -17,6 +19,21 @@ use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        /*
+         * Who moves the money.
+         *
+         * Bound by config so a deployment chooses without a code change, and so
+         * a test can swap in a gateway that declines on purpose. `simulated` is
+         * the default because it is the only one that works with no keys — a
+         * default that throws on boot is a default nobody can run.
+         */
+        $this->app->singleton(PaymentGateway::class, static fn (): PaymentGateway => match (config('publinza.payments.driver')) {
+            default => new SimulatedGateway,
+        });
+    }
+
     public function boot(): void
     {
         // Enforces the post lifecycle and writes post_status_history. Registered

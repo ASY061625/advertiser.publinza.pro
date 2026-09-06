@@ -12,6 +12,9 @@ namespace App\Support\Export;
  * positions, and horizontal rules. dompdf would bring an HTML and CSS engine
  * to lay out six columns.
  *
+ * The file format itself — objects, pages, the xref table — lives in PdfCanvas,
+ * which the invoice writer shares.
+ *
  * Deliberately limited, and the limits are the reason it is safe: Helvetica
  * only, WinAnsi only, no images, no wrapping. Text that would overflow its
  * column is truncated with an ellipsis rather than drawn over its neighbour.
@@ -34,9 +37,13 @@ final class PdfTableWriter
      */
     public function write(string $path, string $title, string $subtitle, array $headers, array $rows, array $widths): void
     {
-        $pages = $this->paginate($title, $subtitle, $headers, $rows, $widths);
+        $canvas = PdfCanvas::landscape();
 
-        file_put_contents($path, $this->document($pages));
+        foreach ($this->paginate($title, $subtitle, $headers, $rows, $widths) as $page) {
+            $canvas->addPage($page);
+        }
+
+        file_put_contents($path, $canvas->render());
     }
 
     /**
@@ -167,82 +174,7 @@ final class PdfTableWriter
             $grey ? '0.392 0.455 0.545 rg' : '0.043 0.106 0.200 rg',
             $x,
             $y,
-            $this->escape($value),
+            PdfCanvas::escape($value),
         );
-    }
-
-    /**
-     * PDF text strings are WinAnsi here, so anything outside it is
-     * transliterated rather than emitted as bytes the viewer would misread.
-     */
-    private function escape(string $value): string
-    {
-        $encoded = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $value);
-
-        if ($encoded === false) {
-            $encoded = (string) preg_replace('/[^\x20-\x7E]/', '?', $value);
-        }
-
-        return str_replace(['\\', '(', ')', "\r", "\n"], ['\\\\', '\\(', '\\)', '', ' '], $encoded);
-    }
-
-    /**
-     * @param  list<string>  $pages
-     */
-    private function document(array $pages): string
-    {
-        $objects = [];
-        $pageCount = count($pages);
-
-        // 1 catalog, 2 pages tree, 3 + 4 fonts, then a page and a content
-        // stream per page.
-        $pageIds = [];
-        for ($i = 0; $i < $pageCount; $i++) {
-            $pageIds[] = 5 + $i * 2;
-        }
-
-        $objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
-        $objects[2] = '<< /Type /Pages /Count '.$pageCount.' /Kids ['
-            .implode(' ', array_map(static fn (int $id): string => $id.' 0 R', $pageIds)).'] >>';
-        $objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
-        $objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
-
-        foreach ($pages as $i => $stream) {
-            $pageId = 5 + $i * 2;
-            $contentId = $pageId + 1;
-
-            $objects[$pageId] = sprintf(
-                '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.0f %.0f] '
-                .'/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>',
-                self::WIDTH,
-                self::HEIGHT,
-                $contentId,
-            );
-
-            $objects[$contentId] = '<< /Length '.strlen($stream)." >>\nstream\n".$stream.'endstream';
-        }
-
-        ksort($objects);
-
-        $pdf = "%PDF-1.4\n";
-        $offsets = [];
-
-        foreach ($objects as $id => $body) {
-            $offsets[$id] = strlen($pdf);
-            $pdf .= $id." 0 obj\n".$body."\nendobj\n";
-        }
-
-        $xrefAt = strlen($pdf);
-        $count = count($objects) + 1;
-
-        $pdf .= "xref\n0 ".$count."\n0000000000 65535 f \n";
-
-        for ($id = 1; $id < $count; $id++) {
-            $pdf .= sprintf("%010d 00000 n \n", $offsets[$id] ?? 0);
-        }
-
-        $pdf .= "trailer\n<< /Size ".$count." /Root 1 0 R >>\nstartxref\n".$xrefAt."\n%%EOF";
-
-        return $pdf;
     }
 }

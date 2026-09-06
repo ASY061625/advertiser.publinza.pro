@@ -34,13 +34,21 @@ use RuntimeException;
  *
  * @property int $available_cents
  * @property int $frozen_cents
+ * @property bool $auto_topup_enabled
+ * @property int|null $auto_topup_threshold_cents
+ * @property int|null $auto_topup_amount_cents
+ * @property int|null $auto_topup_payment_method_id
  */
 class Wallet extends Model
 {
     /** @use HasFactory<WalletFactory> */
     use HasFactory;
 
-    protected $fillable = ['user_id', 'available_cents', 'frozen_cents', 'currency'];
+    protected $fillable = [
+        'user_id', 'available_cents', 'frozen_cents', 'currency',
+        'auto_topup_enabled', 'auto_topup_threshold_cents',
+        'auto_topup_amount_cents', 'auto_topup_payment_method_id',
+    ];
 
     /**
      * @return array<string, string>
@@ -52,6 +60,9 @@ class Wallet extends Model
             'frozen_cents' => 'integer',
             'available' => MoneyCast::class,
             'frozen' => MoneyCast::class,
+            'auto_topup_enabled' => 'boolean',
+            'auto_topup_threshold_cents' => 'integer',
+            'auto_topup_amount_cents' => 'integer',
         ];
     }
 
@@ -163,6 +174,28 @@ class Wallet extends Model
         );
     }
 
+    /**
+     * Credits promotional money — a volume bonus on a large top-up.
+     *
+     * Its own type rather than a second deposit, so the ledger can answer "how
+     * much of this balance did they actually pay for" without guessing from
+     * the description text.
+     */
+    public function bonus(Money $amount, ?Model $reference = null, ?string $description = null): Transaction
+    {
+        return $this->mutate(
+            TransactionType::Bonus,
+            $amount,
+            static function (self $wallet) use ($amount): int {
+                $wallet->available_cents += $amount->cents;
+
+                return $amount->cents;
+            },
+            $reference,
+            $description,
+        );
+    }
+
     /** Returns money to the spendable balance after a cancellation or rejection. */
     public function refund(Money $amount, ?Model $reference = null, ?string $description = null): Transaction
     {
@@ -255,6 +288,29 @@ class Wallet extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class)->latest('created_at');
+    }
+
+    /**
+     * @return BelongsTo<PaymentMethod, $this>
+     */
+    public function autoTopUpMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class, 'auto_topup_payment_method_id');
+    }
+
+    /**
+     * Whether the rule is complete enough to act on.
+     *
+     * The switch alone is not enough: a rule with no card, or with the card
+     * since removed, is a rule that would fail at the moment it mattered. The
+     * page shows it as off and says which piece is missing.
+     */
+    public function autoTopUpIsArmed(): bool
+    {
+        return $this->auto_topup_enabled
+            && $this->auto_topup_threshold_cents !== null
+            && $this->auto_topup_amount_cents !== null
+            && $this->auto_topup_payment_method_id !== null;
     }
 
     protected static function newFactory(): WalletFactory

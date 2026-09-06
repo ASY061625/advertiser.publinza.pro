@@ -7,9 +7,9 @@ namespace App\Domain\Billing\Models;
 use App\Casts\MoneyCast;
 use App\Domain\Billing\DTOs\Money;
 use App\Domain\Billing\Enums\TransactionType;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One line of the wallet ledger, written by Wallet's mutation methods.
@@ -18,11 +18,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * and a correction is a new row. `amount_cents` is signed — a charge is
  * negative — while the two `*_after` columns record both buckets as they stood
  * immediately after the write, which is what makes the ledger reconstructable.
+ *
+ * @property TransactionType $type
+ * @property int $amount_cents
+ * @property int $balance_after_cents
+ * @property int $frozen_after_cents
+ * @property string|null $reference_type
+ * @property int|null $reference_id
+ * @property string|null $description
+ * @property Carbon $created_at
  */
 class Transaction extends Model
 {
-    use HasFactory;
-
     public const UPDATED_AT = null;
 
     protected $fillable = [
