@@ -1,3 +1,5 @@
+import type { ImportReport, MovedRecord } from './lists';
+
 // StatusKey is owned by the Badge that renders it, so the vocabulary and
 // its colours cannot drift apart.
 export type { StatusKey } from '@shared/ui';
@@ -18,8 +20,17 @@ export interface AdminUser {
 }
 
 export interface Flash {
-    success?: string;
-    error?: string;
+    /** Every key is present on every response, and null when unset. */
+    success?: string | null;
+    error?: string | null;
+    /**
+     * A list move, with everything undo needs to reverse it. It travels with
+     * the response because the note and the reason are gone from the database
+     * by the time the toast renders.
+     */
+    moved?: MovedRecord | null;
+    /** What a blacklist import did, in three named groups. */
+    importReport?: ImportReport | null;
 }
 
 /** Props Inertia shares with every page on every surface. */

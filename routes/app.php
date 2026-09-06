@@ -15,6 +15,7 @@ use App\Http\Controllers\Advertiser\CheckoutController;
 use App\Http\Controllers\Advertiser\CompetitorController;
 use App\Http\Controllers\Advertiser\DashboardController;
 use App\Http\Controllers\Advertiser\ExportController;
+use App\Http\Controllers\Advertiser\ListController;
 use App\Http\Controllers\Advertiser\MessageController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\PostGridController;
@@ -158,6 +159,32 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('/cart/bulk', [CartController::class, 'bulk'])->name('cart.bulk');
     Route::post('/cart/promo', [CartController::class, 'applyPromo'])->name('cart.promo.store');
     Route::delete('/cart/promo', [CartController::class, 'removePromo'])->name('cart.promo.destroy');
+    /*
+    | The three lists an advertiser keeps about sites, on one page. The tab is
+    | a query parameter, so the header's heart is a link to a view.
+    */
+    Route::get('/lists', [ListController::class, 'index'])->name('lists.index');
+    Route::get('/lists/export', [ListController::class, 'export'])->name('lists.export');
+    Route::post('/lists/move', [ListController::class, 'move'])->name('lists.move');
+    Route::post('/lists/move/undo', [ListController::class, 'undoMove'])->name('lists.move.undo');
+    Route::post('/lists/cart', [ListController::class, 'addToCart'])->name('lists.cart');
+    Route::post('/lists/blacklist/import', [ListController::class, 'importBlacklist'])
+        ->middleware('throttle:20,1')
+        ->name('lists.blacklist.import');
+    Route::post('/lists/blacklist/remove', [ListController::class, 'destroyBlacklist'])
+        ->name('lists.blacklist.remove');
+    Route::patch('/lists/blacklist/{entry}', [ListController::class, 'updateBlacklist'])
+        ->name('lists.blacklist.update');
+    Route::post('/lists/wishlists', [ListController::class, 'storeWishlist'])->name('lists.wishlists.store');
+    Route::patch('/lists/wishlists/{wishlist}', [ListController::class, 'updateWishlist'])
+        ->name('lists.wishlists.update');
+    Route::post('/lists/wishlists/{wishlist}/duplicate', [ListController::class, 'duplicateWishlist'])
+        ->name('lists.wishlists.duplicate');
+    Route::delete('/lists/wishlists/{wishlist}', [ListController::class, 'destroyWishlist'])
+        ->name('lists.wishlists.destroy');
+    Route::patch('/lists/items/{item}', [ListController::class, 'updateWishlistItem'])
+        ->name('lists.items.update');
+
     Route::post('/cart/{website}', [CartController::class, 'store'])->name('cart.store');
     Route::patch('/cart/{item}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{item}', [CartController::class, 'destroy'])->name('cart.destroy');

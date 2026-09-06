@@ -161,6 +161,15 @@ export const SparkleIcon = (p: IconProps) => (
         <path d="M18.5 3.5v3M20 5h-3" />
     </Svg>
 );
+// A flag, for the wishlist's priority marker. Sparkle already means "new" in
+// the header, and a second meaning on the same glyph is one the reader has to
+// learn per screen.
+export const FlagIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M5.5 21V4" />
+        <path d="M5.5 5.2h11.8l-2.1 3.6 2.1 3.6H5.5Z" />
+    </Svg>
+);
 export const HeartIcon = (p: IconProps) => (
     <Svg {...p}>
         <path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20Z" />

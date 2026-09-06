@@ -1512,6 +1512,133 @@ one path no longer flashes.
 
 ---
 
+## Lists — `/lists`
+
+Three lists an advertiser keeps about a site, on one page, deep-linked as
+`?tab=favorites|wishlist|blacklist`. The heart in the header goes straight to
+`?tab=favorites`.
+
+All three are the catalog table (`CatalogTable`) in a reduced column set, over a
+shared toolbar: search, category, sort, bulk selection, CSV export. The table was
+generalised for this — `columns`, `extraColumns`, `renderActions`, `selection`,
+`minWidth` and `actionsWidth` are props now, and the catalog passes none of them,
+so its own rendering is byte-for-byte what it was.
+
+```
+GET  /lists?tab=…            the page
+GET  /lists/export?tab=…     the visible rows, as CSV
+POST /lists/move             one site, one list to another
+POST /lists/move/undo        the same move, reversed
+POST /lists/cart             one or many sites into the cart
+POST /lists/blacklist/import a paste of domains
+POST /lists/blacklist/remove unblock everything selected
+```
+
+### One presenter call for the page
+
+`ListPresenter` is a thin wrapper over `CatalogPresenter`: whichever tab is open,
+the rows are hydrated once and presented once. Its `WITH` constant is the whole
+eager-load set, in one place, because of this:
+
+> Eloquent's `preventLazyLoading` guard only arms when more than one row is
+> hydrated. A relation missing from that list passes every single-row test and
+> throws the first time somebody has two favourites.
+
+That is not hypothetical — `primaryLanguage` and `country` were missing, and the
+page 500'd in the browser while the suite stayed green. Deleting either from `WITH`
+still fails `it floats flagged wishlist items above the rest`.
+
+### Favorites
+
+Website, category, traffic, DR, price, **date added**, actions. Six columns rather
+than the catalog's nine: somebody looking at their favourites has already decided
+these sites are interesting, so the spam score and the DA that helped them decide
+are noise now — and the date they saved it is the one column the catalog cannot
+show.
+
+"Add all to cart" needs a project, so with none scoped the button is disabled with
+the reason on hover and a project picker appears beside it. Disabled rather than
+hidden: a missing button reads as *you cannot buy these*, a disabled one reads as
+*not yet, and here is the step*. With rows ticked it becomes "Add 4 to cart".
+
+### Wishlist
+
+Named lists, because a flat list stops being useful past thirty sites. The rail on
+the left carries each list and its count; the right side is the selected list plus
+a summary strip — sites, combined price, average DR, combined traffic, and **Buy
+this list**, which adds every item to the cart in one action behind a confirmation
+that shows the total. A bulk add with no figure in front of it is somebody finding
+out afterwards.
+
+The average DR is over the sites that have actually been measured, and says so
+(`of 8 measured`) whenever that is fewer than the list. A list of ten with two
+uncrawled has an average of the eight, not an average dragged toward zero.
+
+Each item carries a note and a priority flag. The flag is a flag, not a rank —
+ordering thirty sites against each other is work nobody does twice — and flagged
+items float to the top under every sort. The note is 200px of real input, which is
+why this tab drops the category column: it has already given 240px to the rail, and
+the category is the one column the toolbar's own filter can stand in for.
+
+### Blacklist
+
+Website, category, **reason** (free text, edited in place), **who blocked it**,
+date, and a remove action. The note above the table is not decoration: a blacklist
+that silently removes sites from search results is a feature people forget they
+turned on, and the next thing they report is that the catalog is missing sites.
+
+"Blocked by" exists because we block sites too. An advertiser who finds a site
+missing and has no memory of blocking it needs the row to say *Publinza* rather
+than imply they did it and forgot.
+
+Bulk import takes a paste — one domain per line, or commas, or semicolons, with or
+without `https://`, `www.` and a path — and answers with three named groups:
+blocked, already blacklisted, and unmatched. The unmatched ones are the whole
+reason to look, so the report goes back in the session and renders above the table
+rather than in a toast that cannot hold a list.
+
+Rows on this tab do not get the strikethrough and the "Blacklisted" badge the
+catalog puts on them. A page of blacklisted sites where every row is marked
+blacklisted says nothing and reads as an error.
+
+### Moving between lists is one action, and undoable
+
+Any row's menu moves it to either of the other two lists. The move is one
+transaction, and the response carries everything undo needs — including the note
+and the reason, which are gone from the database by the time the toast renders. The
+toast holds for nine seconds: an undo nobody had time to read is an undo that does
+not exist.
+
+### Four bugs this surfaced
+
+**`flash.moved` arrived as `null`, not absent.** The Inertia flash bag carries
+every key on every response and fills the unset ones with `null`, so the
+`=== undefined` guard let a null through and the undo effect dereferenced it — a
+blank page on every navigation to `/lists`. The guard is `if (!moved)` now and the
+`Flash` fields are typed `| null`, which is what they always were.
+
+**A screen-reader label scrolled the whole phone sideways.** At 390px the page had
+431px of horizontal overflow while the table itself sat correctly inside its own
+scroller. The offender was an `sr-only` label deep inside a cell: `sr-only` is
+`position: absolute`, the scroll box was `position: static`, so the label's
+containing block was `<body>` and nothing clipped it — its static position out at
+x=820 in a 1180px table pushed the *document* instead. The scroll box is `relative`
+now. (`min-w-0` down the column-flex chain was also needed, and fixed one of the
+three tabs on its own, which is what made the remaining two look like the same bug.)
+
+**Selection was passed to the blacklist tab and silently dropped.** Spread props in
+TSX are not excess-property checked, so `{...shared}` handed the tab a `selected`
+set its own props never declared and TypeScript said nothing. The tab now declares
+them, renders the checkbox column, and has a bulk **Unblock** to make selecting
+worth something.
+
+**`Collection::slice()` preserves keys.** Only the scratch seeder, but worth the
+line: `foreach ($sites->slice(3, 6) as $index => $site)` yields 3, 4, 5… so every
+`$index === 0` branch was dead and the seeded data had no reasons and no
+`blocked_by` variety at all. `->values()` first.
+
+---
+
 ## Layout
 
 ```

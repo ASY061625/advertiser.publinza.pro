@@ -19,7 +19,7 @@ export interface ToastMessage {
      * and a toast is where that offer belongs, because the alternative is
      * redirecting somebody off the page they were working on.
      */
-    action?: { label: string; href: string };
+    action?: { label: string; href: string } | { label: string; onSelect: () => void };
     duration?: number;
 }
 
@@ -105,15 +105,31 @@ export function Toast({ message, onDismiss }: { message: ToastMessage; onDismiss
                 <p className="font-sora text-base font-medium text-ink-900">{message.title}</p>
                 {message.description && <p className="mt-0.5 text-base text-ink-500">{message.description}</p>}
 
-                {message.action && (
-                    <Link
-                        href={message.action.href}
-                        onClick={() => onDismiss(id)}
-                        className="mt-1.5 inline-block font-sora text-sm font-medium text-brand hover:underline"
-                    >
-                        {message.action.label}
-                    </Link>
-                )}
+                {message.action &&
+                    ('href' in message.action ? (
+                        <Link
+                            href={message.action.href}
+                            onClick={() => onDismiss(id)}
+                            className="mt-1.5 inline-block font-sora text-sm font-medium text-brand hover:underline"
+                        >
+                            {message.action.label}
+                        </Link>
+                    ) : (
+                        // Not everything a toast offers is navigation. Undo is
+                        // a request that puts something back, and dressing it as
+                        // a link would be a link that goes nowhere.
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const run = message.action;
+                                if (run && 'onSelect' in run) run.onSelect();
+                                onDismiss(id);
+                            }}
+                            className="mt-1.5 font-sora text-sm font-medium text-brand hover:underline"
+                        >
+                            {message.action.label}
+                        </button>
+                    ))}
             </div>
 
             <button

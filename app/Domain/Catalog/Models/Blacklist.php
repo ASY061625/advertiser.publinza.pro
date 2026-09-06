@@ -16,7 +16,7 @@ class Blacklist extends Model
 
     public const UPDATED_AT = null;
 
-    protected $fillable = ['user_id', 'website_id', 'reason'];
+    protected $fillable = ['user_id', 'website_id', 'reason', 'blocked_by'];
 
     /**
      * @return array<string, string>

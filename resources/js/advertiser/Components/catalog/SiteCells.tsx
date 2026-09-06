@@ -14,14 +14,27 @@ import { flagFor } from './flags';
  */
 
 /** Domain, title, and the two pills. The heart appears on hover or focus. */
-export function SiteIdentity({ site, compact = false }: { site: CatalogRow; compact?: boolean }) {
+export function SiteIdentity({
+    site,
+    compact = false,
+    // The blacklist tab is a page of blacklisted sites. A strikethrough and a
+    // "Blacklisted" badge on every row there says nothing and reads as an
+    // error — the tab already said it once, at the top.
+    showBlacklist = true,
+}: {
+    site: CatalogRow;
+    compact?: boolean;
+    showBlacklist?: boolean;
+}) {
+    const blacklisted = site.isBlacklisted && showBlacklist;
+
     return (
         <div className="group/site flex min-w-0 items-center gap-2.5">
             <DomainMark domain={site.domain} />
 
             <div className="min-w-0 flex-1">
                 <p className="flex min-w-0 items-center gap-1.5">
-                    <span className={cn('truncate font-medium text-ink-900', site.isBlacklisted && 'line-through')}>
+                    <span className={cn('truncate font-medium text-ink-900', blacklisted && 'line-through')}>
                         {site.domain}
                     </span>
 
@@ -38,7 +51,7 @@ export function SiteIdentity({ site, compact = false }: { site: CatalogRow; comp
                     )}
 
                     {site.warnings.length > 0 && <WarningFlag site={site} />}
-                    {site.isBlacklisted && <BlacklistedBadge slug={site.slug} />}
+                    {blacklisted && <BlacklistedBadge slug={site.slug} />}
                 </p>
 
                 {!compact && <p className="truncate text-sm text-ink-500">{site.title}</p>}

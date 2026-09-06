@@ -49,6 +49,15 @@ class HandleAdvertiserInertiaRequests extends Middleware
                 // Recovery codes are flashed exactly once, by the response that
                 // generated them. They are hashed at rest and cannot be re-read.
                 'recoveryCodes' => $request->session()->get('recoveryCodes'),
+                // A list move, carrying everything undo needs to reverse it.
+                // It has to travel with the response: the note and the reason
+                // are gone from the database by the time the toast renders, so
+                // re-reading them would find nothing.
+                'moved' => $request->session()->get('moved'),
+                // What a blacklist import actually did, in three named groups.
+                // More than a toast can hold, and the unmatched domains are the
+                // whole reason to look.
+                'importReport' => $request->session()->get('importReport'),
             ],
         ];
     }
