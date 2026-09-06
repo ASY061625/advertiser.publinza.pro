@@ -42,6 +42,7 @@ use Illuminate\Notifications\Notifiable;
  * @property UserStatus $status
  * @property array<string, mixed>|null $grid_preferences
  * @property bool $sidebar_collapsed
+ * @property bool $notify_replies
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -82,6 +83,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'sidebar_collapsed' => 'boolean',
+            'notify_replies' => 'boolean',
             'changelog_read_at' => 'datetime',
             'grid_preferences' => 'array',
             'two_factor_confirmed_at' => 'datetime',

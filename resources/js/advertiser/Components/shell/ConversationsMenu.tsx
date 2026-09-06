@@ -1,30 +1,9 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
-import { ChatIcon, useDismiss } from '@shared/ui';
+import { ChatIcon, GlobeIcon, useDismiss } from '@shared/ui';
+import { relativeTime } from '@shared/lib/format';
 import type { ShellConversation } from '@shared/types/shell';
 import { HeaderButton } from './HeaderButton';
-
-/** "3 hours ago" without pulling in a date library for one string. */
-function relative(iso: string | null): string {
-    if (iso === null) return '';
-
-    const seconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-    const units: [Intl.RelativeTimeFormatUnit, number][] = [
-        ['year', 31_536_000],
-        ['month', 2_592_000],
-        ['day', 86_400],
-        ['hour', 3_600],
-        ['minute', 60],
-    ];
-
-    const formatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-
-    for (const [unit, size] of units) {
-        if (seconds >= size) return formatter.format(-Math.floor(seconds / size), unit);
-    }
-
-    return 'just now';
-}
 
 export function ConversationsMenu({ conversations, unread }: { conversations: ShellConversation[]; unread: number }) {
     const [open, setOpen] = useState(false);
@@ -44,17 +23,21 @@ export function ConversationsMenu({ conversations, unread }: { conversations: Sh
                 <div className="absolute right-0 z-50 mt-1 w-80 animate-scale-in overflow-hidden rounded-card border border-subtle bg-card shadow-card">
                     {conversations.length === 0 ? (
                         <p className="px-4 py-8 text-center text-base text-ink-500">
-                            No conversations yet. Message us from any order.
+                            No conversations yet. Ask a question from any site in the catalog.
                         </p>
                     ) : (
                         <ul>
                             {conversations.map((conversation) => (
                                 <li key={conversation.id}>
                                     <Link
-                                        href={`/messages/${conversation.id}`}
+                                        href={`/conversations?thread=${conversation.id}`}
                                         onClick={() => setOpen(false)}
                                         className="flex items-start gap-3 border-b border-subtle px-4 py-3 transition-colors duration-fast hover:bg-sunken"
                                     >
+                                        {/* Publinza stores no site marks, so the
+                                            fallback is the common case: a glyph
+                                            of the favicon's size, so nothing
+                                            shifts if one ever lands. */}
                                         {conversation.favicon ? (
                                             <img
                                                 src={conversation.favicon}
@@ -65,7 +48,9 @@ export function ConversationsMenu({ conversations, unread }: { conversations: Sh
                                                 className="mt-0.5 size-4 shrink-0 rounded-[3px] bg-sunken"
                                             />
                                         ) : (
-                                            <span className="mt-0.5 size-4 shrink-0 rounded-[3px] bg-sunken" />
+                                            <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[3px] bg-sunken text-ink-500">
+                                                <GlobeIcon size={11} />
+                                            </span>
                                         )}
 
                                         <span className="min-w-0 flex-1">
@@ -74,7 +59,7 @@ export function ConversationsMenu({ conversations, unread }: { conversations: Sh
                                                     {conversation.domain}
                                                 </span>
                                                 <span className="shrink-0 text-xs text-ink-500">
-                                                    {relative(conversation.at)}
+                                                    {relativeTime(conversation.at)}
                                                 </span>
                                             </span>
                                             {/* One line, always — a wrapping excerpt turns the
@@ -98,7 +83,7 @@ export function ConversationsMenu({ conversations, unread }: { conversations: Sh
 
                     <div className="p-2">
                         <Link
-                            href="/messages"
+                            href="/conversations"
                             onClick={() => setOpen(false)}
                             className="block rounded-button py-2 text-center text-base text-brand transition-colors duration-fast hover:bg-sunken"
                         >

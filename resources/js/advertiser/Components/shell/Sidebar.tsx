@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { cn } from '@shared/lib/cn';
-import { FolderIcon, GlobeIcon, HomeIcon, ListIcon, PanelLeftIcon, PlusIcon, Tooltip } from '@shared/ui';
+import { ChatIcon, FolderIcon, GlobeIcon, HomeIcon, ListIcon, PanelLeftIcon, PlusIcon, Tooltip } from '@shared/ui';
 import type { ShellProject } from '@shared/types/shell';
 import { useAddPost } from '../post-wizard/AddPostProvider';
 import { ProjectSwitcher } from './ProjectSwitcher';
@@ -22,6 +22,7 @@ const NAV = [
     { label: 'My projects', href: '/projects', icon: FolderIcon, scoped: false },
     { label: 'Catalog of websites', href: '/catalog', icon: GlobeIcon, scoped: true },
     { label: 'My lists', href: '/lists', icon: ListIcon, scoped: false },
+    { label: 'Conversations', href: '/conversations', icon: ChatIcon, scoped: false },
 ];
 
 export function Sidebar({

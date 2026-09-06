@@ -149,7 +149,7 @@ export function Header({ crumbs, shell, counts, user, onOpenWhatsNew, onOpenMobi
 
                             {[
                                 { label: 'Favorites', href: '/lists?tab=favorites', count: counts.favorites },
-                                { label: 'Conversations', href: '/messages', count: counts.conversations },
+                                { label: 'Conversations', href: '/conversations', count: counts.conversations },
                                 { label: 'Cart', href: '/cart', count: counts.cart },
                             ].map((item) => (
                                 <Link

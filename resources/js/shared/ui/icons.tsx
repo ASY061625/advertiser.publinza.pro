@@ -170,6 +170,51 @@ export const FlagIcon = (p: IconProps) => (
         <path d="M5.5 5.2h11.8l-2.1 3.6 2.1 3.6H5.5Z" />
     </Svg>
 );
+// The delivered/read ticks on a sent message. Two glyphs rather than one that
+// changes colour: colour alone is not a state anyone can name.
+export const CheckDoubleIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="m1.5 12.5 4 4L13 9" />
+        <path d="m11 16.5 4-4M11.5 6.5 17 12" />
+    </Svg>
+);
+export const PaperclipIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.8 1.8 0 0 1-2.5-2.5l7.3-7.3" />
+    </Svg>
+);
+export const SmileIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0" />
+        <path d="M9 9.5h.01M15 9.5h.01" />
+    </Svg>
+);
+export const SendIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M20.5 3.5 10.5 13.5" />
+        <path d="M20.5 3.5 14 20.5l-3.5-7-7-3.5Z" />
+    </Svg>
+);
+export const BellOffIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M8.7 4.6A5.5 5.5 0 0 1 17.5 9c0 2.4.5 4.1 1.1 5.3M5.9 8a5.5 5.5 0 0 0-.4 1c0 4-1.5 5-1.5 6h12" />
+        <path d="M10.3 20a2 2 0 0 0 3.4 0" />
+        <path d="m3 3 18 18" />
+    </Svg>
+);
+export const ArchiveIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M3 7.5h18v12H3z" />
+        <path d="M2 4.5h20v3H2zM9.5 11.5h5" />
+    </Svg>
+);
+export const MailIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M3 5.5h18v13H3z" />
+        <path d="m3 6.5 9 6 9-6" />
+    </Svg>
+);
 export const HeartIcon = (p: IconProps) => (
     <Svg {...p}>
         <path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20Z" />

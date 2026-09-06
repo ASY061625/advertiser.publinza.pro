@@ -13,10 +13,11 @@ use App\Http\Controllers\Advertiser\CartController;
 use App\Http\Controllers\Advertiser\CatalogController;
 use App\Http\Controllers\Advertiser\CheckoutController;
 use App\Http\Controllers\Advertiser\CompetitorController;
+use App\Http\Controllers\Advertiser\ConversationController;
 use App\Http\Controllers\Advertiser\DashboardController;
 use App\Http\Controllers\Advertiser\ExportController;
 use App\Http\Controllers\Advertiser\ListController;
-use App\Http\Controllers\Advertiser\MessageController;
+use App\Http\Controllers\Advertiser\NotificationPreferenceController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\PostGridController;
 use App\Http\Controllers\Advertiser\PostWizardController;
@@ -314,9 +315,43 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('/posts/{post}/approve', [PostController::class, 'approve'])->name('posts.approve');
     Route::post('/posts/{post}/cancel', [PostController::class, 'cancel'])->name('posts.cancel');
 
-    Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
-    Route::get('/messages/{thread}', [MessageController::class, 'show'])->name('messages.show');
-    Route::post('/messages/{thread}', [MessageController::class, 'store'])->name('messages.store');
+    /*
+    | Messaging with the Publinza team.
+    |
+    | One page: the thread list, the open conversation and the context panel are
+    | three panes of /conversations, not three routes. The thread lives in the
+    | query string so a specific conversation is still a link somebody can send,
+    | and so switching threads is a partial reload rather than a page load.
+    |
+    | The static shapes sit above the {thread} ones, so "attachments" and "new"
+    | are never read as a thread id.
+    */
+    Route::get('/conversations', [ConversationController::class, 'index'])->name('conversations.index');
+    Route::get('/conversations/new/options', [ConversationController::class, 'options'])
+        ->name('conversations.options');
+    Route::get('/conversations/attachments/{attachment}', [ConversationController::class, 'attachment'])
+        ->name('conversations.attachment');
+    Route::post('/conversations', [ConversationController::class, 'store'])->name('conversations.store');
+    Route::post('/conversations/{thread}/messages', [ConversationController::class, 'reply'])
+        ->middleware('throttle:60,1')
+        ->name('conversations.reply');
+    Route::post('/conversations/{thread}/unread', [ConversationController::class, 'markUnread'])
+        ->name('conversations.unread');
+    Route::post('/conversations/{thread}/status', [ConversationController::class, 'updateStatus'])
+        ->name('conversations.status');
+    Route::post('/conversations/{thread}/mute', [ConversationController::class, 'updateMute'])
+        ->name('conversations.mute');
+    Route::patch('/settings/notifications', [NotificationPreferenceController::class, 'update'])
+        ->name('settings.notifications');
+
+    /*
+    | The old addresses. Both are kept because they are in sent email and in
+    | anything anyone bookmarked; both land on the same page they always meant.
+    */
+    Route::redirect('/messages', '/conversations')->name('messages.index');
+    Route::get('/messages/{thread}', fn (string $thread) => redirect("/conversations?thread={$thread}"))
+        ->whereNumber('thread')
+        ->name('messages.show');
 
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/top-up', [BillingController::class, 'topUp'])->name('billing.top-up');

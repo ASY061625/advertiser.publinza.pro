@@ -139,14 +139,22 @@ final class ShellData
                 return [
                     'id' => $conversation->id,
                     'domain' => $domain ?? $conversation->subject,
-                    // Google's favicon service, not a stored asset: the sites
-                    // are ours but their icons change without telling us.
-                    'favicon' => $domain === null
-                        ? null
-                        : "https://www.google.com/s2/favicons?sz=32&domain={$domain}",
+                    /*
+                     * Always null, and deliberately so.
+                     *
+                     * This used to point at Google's favicon service, which
+                     * ships every domain the advertiser is buying on to a third
+                     * party on each page load — the same trade the posts grid
+                     * refuses to make, for the same reason. The menu falls back
+                     * to a glyph of the same size, so nothing shifts if
+                     * Publinza ever stores its own site marks.
+                     */
+                    'favicon' => null,
                     'excerpt' => $latest === null ? '' : Str::limit(strip_tags($latest->body), 80),
                     'at' => $conversation->last_message_at?->toIso8601String(),
-                    'unread' => $conversation->unread_count > 0,
+                    // A withCount alias, not a column — read as an attribute
+                    // so it does not look like a property the model declares.
+                    'unread' => (int) $conversation->getAttribute('unread_count') > 0,
                 ];
             })
             ->all();

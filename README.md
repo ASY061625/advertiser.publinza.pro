@@ -1639,6 +1639,146 @@ line: `foreach ($sites->slice(3, 6) as $index => $site)` yields 3, 4, 5… so ev
 
 ---
 
+## Conversations — `/conversations`
+
+Messaging with the Publinza team. Every thread is advertiser ↔ Publinza, because
+Publinza owns every site in the catalog — there is no third party to talk to.
+What varies is not who is in the room but what the thread is *about*: which site,
+or which placement. That is what the list is organised by and what the right-hand
+panel reads.
+
+Three panes over one URL — a 360px thread list, the conversation, and an optional
+300px context panel — with the open thread in the query string. One URL because a
+conversation is a place people link to, from an email or from a post, and because
+switching threads is then a partial reload of a few props rather than a page load
+that would throw away the composer's contents and both panes' scroll positions.
+
+```
+GET  /conversations?tab=&q=&thread=   the page
+GET  /conversations/new/options       the websites and posts a thread can be about
+POST /conversations                   open a thread
+POST /conversations/{t}/messages      post a message (204 to JSON, redirect to a form)
+POST /conversations/{t}/unread        put it back in the unread pile
+POST /conversations/{t}/status        close or reopen
+POST /conversations/{t}/mute          mute or unmute this one thread
+GET  /conversations/attachments/{a}   one file, through the app
+PATCH /settings/notifications         email me when the team replies, or don't
+```
+
+`/messages` and `/messages/{id}` redirect here. They were routes to two Inertia
+pages that were never built — the controller behind them has been deleted.
+
+### Unread is derived, never stored
+
+A thread is unread when it holds an unread inbound message. There is no flag
+beside that, and "mark unread" clears `read_at` on the most recent team message
+rather than setting one. Two sources of truth for unread is how an inbox ends up
+with a badge saying 3 over a list showing nothing new.
+
+The *most recent* one only: "mark unread" means "I have not dealt with this", not
+"forget that I read the other eleven".
+
+### Optimistic sending, and what makes it honest
+
+The message is on screen before the request leaves, because a composer that waits
+for a round trip before showing what you typed feels broken on a train. Three
+things stop that being a lie:
+
+- **A client token, minted once and reused on every retry.** A unique index on
+  `(conversation_id, client_token)` backs it, and `PostMessage` checks for the
+  existing row *before* opening a transaction — so a retry of a request that
+  actually succeeded returns the message it made rather than a 500 from the index.
+- **A failure marks the message failed; it never removes it.** Deleting what
+  somebody wrote because the network dropped is how you lose their words. The
+  bubble greys out and offers Retry, with the text still in it.
+- **The optimistic copy is dropped only when the server's own version arrives**,
+  matched on that same token — never on position or text, because two identical
+  "thanks" a minute apart are different messages.
+
+The send goes through `fetch` rather than Inertia's router, and that is not a
+style choice: a visit's `onError` fires for a 422 and for nothing else, so a
+dropped connection — the exact case Retry exists for — resolved as a silent
+success and left "Sending…" on screen forever.
+
+### Live, over a socket or a poll
+
+`ConversationActivity` broadcasts on the advertiser's private channel when the
+team writes. It carries a thread id and nothing else: the client re-reads the page
+through the controller, so a stale event cannot paint a message that has since
+changed, and the policy still decides what that browser may see. Same discipline
+as `ShellCountsChanged`.
+
+With no broadcaster configured the client polls every 20 seconds instead — faster
+than the header's 60, because a reply somebody is waiting on is worth more than a
+badge. That is a working state, not a degraded one.
+
+`TeamTyping` is `ShouldBroadcastNow`, not `ShouldBroadcast`: a typing indicator
+that arrives after the message it was announcing is worse than none, and a queue
+worker is exactly that delay. Nothing is persisted, and the indicator expires on
+the client's own six-second timer — a teammate who closes the tab mid-sentence
+never sends a "stopped" event, and the dots would otherwise sit there forever. It
+is dispatched from the admin messaging surface, which does not exist yet.
+
+### Everything that happens because a message was posted
+
+`PostMessage` fires the broadcast, moves the header count and sends the email —
+not the controller. A reply posted from an admin panel, a console command or a
+webhook then gets the same treatment as one posted from a form. A side effect
+wired into one code path is a side effect that will be missing from the next one.
+
+Three separate decisions silence the email, and each belongs to somebody
+different: a thread the advertiser muted, an account that has turned reply emails
+off, and a system notice, which is not a reply and is not worth one. Muting is per
+thread rather than per account because somebody chasing one late post wants that
+thread quiet without going deaf to the other six.
+
+The account-level switch sits at the foot of the inbox it governs, not on a
+settings page three screens away — the reply email itself promises it can be
+turned off, which has to be true somewhere findable.
+
+### The context panel
+
+The post when the thread is tied to one, the site otherwise. Never both: two
+panels of facts beside a conversation is a reference book, and nobody reads it. A
+thread about a post shows the anchor, the price, the status timeline and the
+article download — what the messages keep referring back to.
+
+Below `lg` there is no room for a third column, so the same body renders in a
+Drawer. Two presentations of one component rather than two components that drift.
+
+### Four bugs this surfaced
+
+**A partial reload filters shared props too.** Opening a thread cleared its unread
+pill while the header badge above it still counted the message — `only:` had left
+`shell` out, so `ShellData` never re-ran. The badge and the tab counts now move
+together because `shell` is in every reload that can change them.
+
+**The context panel read its terms off a four-column model.** The thread list
+selects `website:id,slug,domain,title` for the row, and `->load()` adds relations
+but never the missing *columns* — so the panel printed nulls for every term, which
+is worse than an error because it looks like data. The open thread re-fetches its
+website rather than loading onto the row's copy.
+
+**Sibling sticky date separators piled up.** All of them shared one parent, so
+every heading pinned at `top-0` and stacked in the same place while the messages
+under them scrolled past. Each day is its own `<section>` now, so a heading is
+pushed out by the end of its own group — which is what a date separator is for.
+
+**An empty send answered 302 to a JSON caller.** `back()->withErrors()` redirects
+whoever asks, so the composer would have read a rejected message as a network
+failure and offered a Retry that could only fail again. It throws a
+`ValidationException` now: 422 to JSON, redirect to a form post.
+
+### One thing fixed in passing
+
+The header's conversation menu was building favicon URLs against Google's favicon
+service, which ships every domain the advertiser is buying on to a third party on
+every page load. The posts grid already refuses that trade in as many words. Both
+surfaces now draw a glyph of the favicon's size, so nothing shifts if Publinza
+ever stores its own site marks.
+
+---
+
 ## Layout
 
 ```

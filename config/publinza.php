@@ -101,4 +101,25 @@ return [
         'currency' => env('BILLING_CURRENCY', 'USD'),
         'minimum_top_up_minor_units' => (int) env('BILLING_MIN_TOP_UP', 1000),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support hours
+    |--------------------------------------------------------------------------
+    |
+    | When the team is at their desks, in UTC, and how long a reply typically
+    | takes outside those hours. The composer says so rather than leaving
+    | somebody who wrote at midnight wondering whether the message sent.
+    |
+    | Days are ISO-8601: 1 is Monday, 7 is Sunday.
+    |
+    */
+
+    'support' => [
+        'timezone' => env('SUPPORT_TIMEZONE', 'UTC'),
+        'open_hour' => (int) env('SUPPORT_OPEN_HOUR', 8),
+        'close_hour' => (int) env('SUPPORT_CLOSE_HOUR', 18),
+        'days' => [1, 2, 3, 4, 5],
+        'response_hours' => (int) env('SUPPORT_RESPONSE_HOURS', 4),
+    ],
 ];
