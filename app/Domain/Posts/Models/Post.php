@@ -12,11 +12,13 @@ use App\Domain\Posts\Enums\PostStatus;
 use App\Domain\Posts\Support\PostStatusContext;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectFolder;
+use App\Domain\Search\Contracts\SearchableIndex;
 use App\Domain\Trading\Enums\ContentMode;
 use App\Domain\Trading\Models\Order;
 use App\Exceptions\InvalidStatusTransition;
 use App\Models\User;
 use Database\Factories\PostFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Scout\Searchable;
 
 /**
  * The unit of work: one article or link going live on one website.
@@ -39,11 +42,12 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $frozen_until
  * @property array<string, mixed>|null $brief
  */
-class Post extends Model
+class Post extends Model implements SearchableIndex
 {
     /** @use HasFactory<PostFactory> */
     use HasFactory;
 
+    use Searchable;
     use SoftDeletes;
 
     protected $fillable = [
@@ -126,6 +130,41 @@ class Post extends Model
     // ---------------------------------------------------------- relationships
 
     /**
+     * What the global palette matches a post on.
+     *
+     * The website's domain is denormalised in rather than joined at search
+     * time: people look for "that post on techweekly", and an index that only
+     * knows the anchor text cannot answer that. `user_id` is filterable for the
+     * same reason it is on Project — every row here belongs to somebody.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        $this->loadMissing('website:id,domain');
+
+        return [
+            'id' => $this->id,
+            'user_id' => $this->user_id,
+            'anchor_text' => $this->anchor_text,
+            'domain' => $this->website?->domain,
+            'target_url' => $this->target_url,
+        ];
+    }
+
+    /**
+     * Loaded in bulk, so a full reindex is a handful of queries rather than
+     * one per post.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    protected function makeAllSearchableUsing($query)
+    {
+        return $query->with('website:id,domain');
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function advertiser(): BelongsTo
@@ -165,7 +204,11 @@ class Post extends Model
         return $this->belongsTo(Order::class);
     }
 
-    /** The current revision. */
+    /**
+     * The current revision.
+     *
+     * @return BelongsTo<Article, $this>
+     */
     public function article(): BelongsTo
     {
         return $this->belongsTo(Article::class);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Models;
 
 use App\Domain\Catalog\Enums\LinkType;
+use App\Domain\Search\Contracts\SearchableIndex;
 use App\Domain\Trading\Enums\ServiceType;
 use Database\Factories\WebsiteFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,7 +32,7 @@ use Laravel\Scout\Searchable;
  * @property Carbon|null $domain_registered_at
  * @property array<int, int>|null $word_count_tiers
  */
-class Website extends Model
+class Website extends Model implements SearchableIndex
 {
     /** @use HasFactory<WebsiteFactory> */
     use HasFactory;

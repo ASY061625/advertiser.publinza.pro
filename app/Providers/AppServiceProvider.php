@@ -7,6 +7,9 @@ namespace App\Providers;
 use App\Domain\Billing\Contracts\PaymentGateway;
 use App\Domain\Billing\Gateways\SimulatedGateway;
 use App\Domain\Posts\Models\Post;
+use App\Domain\Search\Contracts\SearchEngine;
+use App\Domain\Search\Engines\DatabaseEngine;
+use App\Domain\Search\Engines\MeilisearchEngine;
 use App\Observers\PostObserver;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -16,6 +19,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Meilisearch\Client;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,6 +35,23 @@ class AppServiceProvider extends ServiceProvider
          */
         $this->app->singleton(PaymentGateway::class, static fn (): PaymentGateway => match (config('publinza.payments.driver')) {
             default => new SimulatedGateway,
+        });
+
+        /*
+         * What the global palette searches with.
+         *
+         * Keyed off the Scout driver rather than a setting of its own, because
+         * there is only one honest answer: Meilisearch's multi-search when
+         * Scout is indexing into Meilisearch, and LIKE queries when it is not.
+         * A separate switch would let the two disagree, and a palette pointed
+         * at an index nothing is writing to returns nothing, silently.
+         */
+        $this->app->singleton(SearchEngine::class, static function ($app): SearchEngine {
+            if (config('scout.driver') !== 'meilisearch') {
+                return new DatabaseEngine;
+            }
+
+            return new MeilisearchEngine($app->make(Client::class));
         });
     }
 

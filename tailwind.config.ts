@@ -121,9 +121,12 @@ export default {
                 'row-catalog': '56px',
                 row: '48px',
                 drawer: '480px',
+                // The palette's input. Taller than a form field, because it is
+                // the only thing on the row and it is what the eye lands on.
+                'palette-input': '52px',
             },
 
-            maxWidth: { content: '1440px', drawer: '480px', 'drawer-lg': '620px', notifications: '420px' },
+            maxWidth: { content: '1440px', drawer: '480px', 'drawer-lg': '620px', notifications: '420px', palette: '640px' },
 
             /*
              * One extra breakpoint, for one thing: the catalog's filter rail.

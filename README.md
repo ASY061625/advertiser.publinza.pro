@@ -2260,7 +2260,138 @@ side is read-only.
 
 ---
 
-## Four bugs this surfaced
+## Global search — Cmd/Ctrl+K
+
+A 640px palette from every authenticated screen, with a search button in the
+header — labelled with its own shortcut from `lg`, an icon below it, and never
+inside the overflow menu, because search behind two taps is search nobody
+reaches for.
+
+### Five groups, four of them from one request
+
+Websites, projects, posts and conversations come back in a single response.
+Scout has no multi-search — `Model::search()` is one index per call — so four
+groups would be four sequential round trips inside a 200ms debounce. The
+Meilisearch client's `multiSearch` answers all four at once, and `SearchEngine`
+is the shape of that call so a `DatabaseEngine` of plain LIKE queries can
+satisfy it too. Which one is bound is keyed off the Scout driver rather than a
+setting of its own: a palette pointed at an index nothing is writing to returns
+nothing, silently.
+
+Actions is the fifth group and never leaves the browser. Eight commands are
+known at build time, and asking a server whether "Log out" contains the letters
+somebody typed is a round trip to learn something the client already knows.
+
+### The engine returns ids; the database returns rows
+
+An index is eventually consistent. A palette that renders a price straight out
+of it will one day quote a price nobody is selling at, and list a site that was
+withdrawn this morning. So the engine is asked for fifteen candidate ids per
+group and the rows are read from the database, where the real scoping —
+active sites only, not soft-deleted, this account's work — is applied before the
+list is cut to five.
+
+### Two locks on the per-account indexes
+
+`projects`, `posts` and `conversations` hold every advertiser's rows in one
+index each. The multi-search sends `user_id = N` with each of those queries
+*and* the hydration query scopes by owner. Either alone would be correct today;
+both is because this is the one bug in a search palette that hands one
+customer's work to another, and it would look exactly like a working feature.
+
+Meilisearch fails an unknown filter quietly rather than erroring, so a missing
+`filterableAttributes` entry in `config/scout.php` would not throw — it would
+return everybody's projects to everybody. `GlobalSearchTest` asserts both the
+filter that goes to the engine and the rows that come back.
+
+### Highlighting is computed in the browser
+
+Meilisearch will do it, and both of its answers are wrong here. `_formatted`
+returns HTML, and rendering engine-supplied markup around a domain somebody else
+registered means `dangerouslySetInnerHTML` over untrusted text.
+`_matchesPosition` returns *byte* offsets, which stop lining up with JavaScript
+string indices the moment a title contains a non-ASCII character.
+
+So `segments()` splits the text against the query terms locally, and the row
+renders `<mark>` elements. The trade is that a typo-tolerant hit — Meilisearch
+matching "techweekly" for "techweekli" — comes back with nothing underlined.
+The row is still there and still right; it is just not marked.
+
+### The keyboard model
+
+Arrows move through every row as one flat list, so moving down from the last
+project lands on the first post rather than stopping at a group boundary. Tab
+cycles *group heads*, which is the one movement arrows cannot do cheaply when a
+group has five items in it; focus stays in the input throughout, which is why
+preventing Tab's default is right here and would be wrong almost anywhere else.
+Enter opens, Escape closes.
+
+### The empty box and the empty result
+
+Opening with nothing typed shows recent searches and the five most recently
+viewed websites and projects — that is what makes Cmd+K a way back to
+yesterday's work rather than only a search box. Views are recorded in
+`recently_viewed`, updated in place rather than appended: somebody who opens the
+same site nine times in a morning has looked at one site.
+
+A search that matches nothing shows the query, a "Nothing matched" line, and the
+Actions group. The matched actions win when any match — somebody who typed "top
+up" wants Top up balance, not that plus seven others — and all eight appear only
+when nothing matched at all, because an empty box is exactly the wrong answer at
+the moment somebody needs another way through.
+
+Search history is ten entries in `localStorage`, with a clear action. Local
+rather than per account on purpose: it is a browsing trace, only useful on the
+machine that made it, and storing it server-side would turn "what did I type"
+into a support-readable record for no benefit to anyone.
+
+### When the search engine is down
+
+The palette is an accelerator, not the only way to reach anything — every group
+in it has a page behind it. So a failed multi-search logs a warning and returns
+no results rather than turning Cmd+K into an error dialog. Driven with
+Meilisearch configured and unreachable: the endpoint still answers 200, the
+palette opens, and it offers the eight actions under "Nothing matched".
+
+---
+
+## Bugs these surfaced
+
+**A completed post took the whole palette down.** `Badge` destructured its
+status lookup — `const { label } = STATUS[status]` — and every caller reaches it
+through an `as StatusKey` cast from a server string, so the type system was not
+checking anything. The lifecycle has nine states and the badge has eight
+colours: Completed reads in Posted's green, via `PostStatus::badgeKey()`. The
+palette was sending the raw value, so one completed post in the results threw
+inside render and blanked the dialog. Fixed on both sides — the right key from
+the server, and a grey chip naming the unknown value instead of a crash.
+
+**The Meilisearch client takes query objects, not arrays.** `multiSearch()`
+calls `->toArray()` on every entry it is handed, so the array payload I first
+wrote would have been a fatal error the moment a real Meilisearch was reachable
+— and never once in this environment, where the service is not. PHPStan caught
+it from the client's own signature.
+
+**`searchableAs()` already carries `scout.prefix`.** Prepending it again
+produces `publinza_publinza_posts`: an index that exists nowhere and returns
+nothing, quietly.
+
+**LIKE escaping is not portable.** Escaping `_` and `%` with a backslash works
+on MySQL, where backslash is LIKE's default escape character, and silently stops
+working on SQLite, which has none unless an `ESCAPE` clause says so. The
+production database is MySQL and the test suite runs on SQLite, so the escaping
+was right in production and matched nothing in tests — the harder direction to
+notice, had the test been written the other way round. Both now get an explicit
+`ESCAPE` clause.
+
+**Clicking the palette's own buttons dropped the caret.** Choosing a recent
+search or clearing the history moved focus to the button, so the next keystroke
+went nowhere. A keyboard-first palette you have to reach for the mouse to
+recover is not one.
+
+---
+
+## Four bugs the notification work surfaced
 
 **Every hand-rolled `fetch` in the app 419'd after signing in.** Ten call sites
 read the CSRF token from `<meta name="csrf-token">`. That tag is rendered once,

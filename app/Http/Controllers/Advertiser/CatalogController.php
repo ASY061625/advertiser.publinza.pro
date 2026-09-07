@@ -17,6 +17,7 @@ use App\Domain\Catalog\Support\CatalogPresenter;
 use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Models\LandingPage;
 use App\Domain\Projects\Models\Project;
+use App\Domain\Search\Support\RecentlyViewedRecorder;
 use App\Domain\Trading\Enums\ServiceType;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -113,11 +114,17 @@ class CatalogController extends Controller
         Website $website,
         GetWebsiteDetail $detail,
         GetCatalogRanges $ranges,
+        RecentlyViewedRecorder $viewed,
     ): JsonResponse|Response {
         $this->authorize('view', $website);
 
         $user = $request->user();
         $project = $this->project($user, $request->integer('project') ?: null);
+
+        // Both renderings of this route count as looking at the site, because
+        // both are how somebody looks at it.
+        $viewed->record($user, RecentlyViewedRecorder::WEBSITE, $website->id);
+        $viewed->prune($user, RecentlyViewedRecorder::WEBSITE);
 
         $payload = $detail->handle($website, $user, $project);
 

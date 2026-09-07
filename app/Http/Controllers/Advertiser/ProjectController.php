@@ -36,6 +36,7 @@ use App\Domain\Projects\Models\LandingPage;
 use App\Domain\Projects\Models\Project;
 use App\Domain\Projects\Models\ProjectDraft;
 use App\Domain\Projects\Support\ProjectAudit;
+use App\Domain\Search\Support\RecentlyViewedRecorder;
 use App\Domain\System\Models\ExportJob;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Advertiser\ProjectSettingsRequest;
@@ -155,9 +156,16 @@ class ProjectController extends Controller
      * renders — so a tab is a URL an advertiser can bookmark or send to a
      * colleague rather than a state that exists only in their browser.
      */
-    public function show(Request $request, Project $project, GetProjectOverview $overview): Response
-    {
+    public function show(
+        Request $request,
+        Project $project,
+        GetProjectOverview $overview,
+        RecentlyViewedRecorder $viewed,
+    ): Response {
         $this->authorize('view', $project);
+
+        $viewed->record($request->user(), RecentlyViewedRecorder::PROJECT, $project->id);
+        $viewed->prune($request->user(), RecentlyViewedRecorder::PROJECT);
 
         $tab = ProjectTab::tryFromRequest($request->input('tab'));
 

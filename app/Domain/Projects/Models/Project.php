@@ -11,6 +11,7 @@ use App\Domain\Catalog\Models\WebsiteCategory;
 use App\Domain\Intelligence\Models\Competitor;
 use App\Domain\Posts\Models\Post;
 use App\Domain\Projects\Enums\ProjectStatus;
+use App\Domain\Search\Contracts\SearchableIndex;
 use App\Models\User;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 /**
  * A campaign: one advertiser site, its targeting, and the posts bought for it.
@@ -38,11 +40,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property ProjectStatus $status
  * @property string|null $publisher_task
  */
-class Project extends Model
+class Project extends Model implements SearchableIndex
 {
     /** @use HasFactory<ProjectFactory> */
     use HasFactory;
 
+    use Searchable;
     use SoftDeletes;
 
     protected $fillable = [
@@ -61,6 +64,27 @@ class Project extends Model
     protected function casts(): array
     {
         return ['status' => ProjectStatus::class];
+    }
+
+    /**
+     * What the global palette matches a project on.
+     *
+     * `user_id` is in here as a *filterable* attribute, not a searchable one.
+     * Everything in this index belongs to somebody, and the search that reads
+     * it filters on that column — without it one advertiser's palette would
+     * return another's projects, which is the whole reason this model is not
+     * simply searchable on its name.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'user_id' => $this->user_id,
+            'name' => $this->name,
+            'website_url' => $this->website_url,
+        ];
     }
 
     /**

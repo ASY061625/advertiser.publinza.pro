@@ -51,7 +51,3 @@ export interface Shell {
     echo: EchoConfig | null;
 }
 
-export interface SearchGroup {
-    label: string;
-    items: { id: string; title: string; subtitle: string | null; href: string }[];
-}

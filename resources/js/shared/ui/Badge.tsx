@@ -34,8 +34,19 @@ interface BadgeProps {
 }
 
 export function Badge({ status, label: labelOverride, className }: BadgeProps) {
-    const { label: defaultLabel, className: tone } = STATUS[status];
-    const label = labelOverride ?? defaultLabel;
+    /*
+     * Falls back rather than destructuring blind.
+     *
+     * This lookup used to be `const { label } = STATUS[status]`, which throws
+     * on an unknown key — and every caller reaches it through an `as StatusKey`
+     * cast from a server string, so the type system is not actually checking
+     * anything here. One post in a status the badge did not know took a whole
+     * screen down with it; a grey chip with the raw value is a far better
+     * failure, and it names the offending key for whoever has to fix it.
+     */
+    const known = STATUS[status] ?? { label: status, className: 'bg-status-draft-bg text-status-draft-fg' };
+    const label = labelOverride ?? known.label;
+    const tone = known.className;
 
     return (
         <span

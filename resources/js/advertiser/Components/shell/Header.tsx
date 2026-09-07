@@ -1,7 +1,16 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { cn } from '@shared/lib/cn';
-import { BellIcon, ChevronRightIcon, HeartIcon, MenuIcon, MoreIcon, SparkleIcon, useDismiss } from '@shared/ui';
+import {
+    BellIcon,
+    ChevronRightIcon,
+    HeartIcon,
+    MenuIcon,
+    MoreIcon,
+    SearchIcon,
+    SparkleIcon,
+    useDismiss,
+} from '@shared/ui';
 import type { Shell, ShellCounts } from '@shared/types/shell';
 import type { User } from '@shared/types';
 import { BalancePill } from './BalancePill';
@@ -22,6 +31,7 @@ interface HeaderProps {
     user: User;
     onOpenWhatsNew: () => void;
     onOpenNotifications: () => void;
+    onOpenSearch: () => void;
     onOpenMobileNav: () => void;
 }
 
@@ -32,6 +42,7 @@ export function Header({
     user,
     onOpenWhatsNew,
     onOpenNotifications,
+    onOpenSearch,
     onOpenMobileNav,
 }: HeaderProps) {
     const [overflowOpen, setOverflowOpen] = useState(false);
@@ -96,6 +107,38 @@ export function Header({
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
+                {/*
+                    Two shapes, one action.
+
+                    From lg the palette advertises its own shortcut, because a
+                    keyboard-first tool nobody knows the shortcut for is a tool
+                    nobody uses. Below it there is no keyboard to advertise to,
+                    so it collapses to the icon — and it stays out of the
+                    overflow menu, because search behind two taps is search
+                    nobody reaches for.
+                */}
+                <button
+                    type="button"
+                    onClick={onOpenSearch}
+                    aria-label="Search"
+                    className="hidden h-9 items-center gap-2 rounded-button border border-subtle bg-sunken px-3 text-base text-ink-500 transition-colors duration-fast hover:border-strong hover:text-ink-700 lg:flex"
+                >
+                    <SearchIcon size={15} />
+                    <span>Search</span>
+                    <kbd className="ml-2 rounded border border-subtle bg-card px-1.5 py-0.5 font-sans text-[11px] text-ink-500">
+                        ⌘K
+                    </kbd>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={onOpenSearch}
+                    aria-label="Search"
+                    className="flex size-9 items-center justify-center rounded-button text-ink-500 transition-colors duration-fast hover:bg-sunken hover:text-ink-700 lg:hidden"
+                >
+                    <SearchIcon size={18} />
+                </button>
+
                 {/* Items 1–4 sit inline from lg and collapse into one overflow
                     menu below it. Balance and profile always stay visible. */}
                 <div className="hidden items-center gap-1.5 lg:flex">

@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Domain\Catalog\Models\Website;
+use App\Domain\Messaging\Models\Conversation;
+use App\Domain\Posts\Models\Post;
+use App\Domain\Projects\Models\Project;
 
 return [
     'driver' => env('SCOUT_DRIVER', 'meilisearch'),
@@ -35,6 +38,31 @@ return [
                 ],
                 'sortableAttributes' => ['price_cents', 'monthly_traffic', 'ahrefs_dr'],
                 'searchableAttributes' => ['domain', 'title', 'description'],
+            ],
+
+            /*
+             * The three per-account indexes the global palette reads.
+             *
+             * `user_id` is filterable on all three and searchable on none. The
+             * palette's multi-search sends `user_id = N` with every one of
+             * these queries, and Meilisearch fails an unknown filter *quietly*
+             * — a missing entry here would not error, it would return
+             * everybody's projects to everybody. GlobalSearchTest asserts the
+             * scoping for exactly that reason.
+             */
+            Project::class => [
+                'filterableAttributes' => ['user_id'],
+                'searchableAttributes' => ['name', 'website_url'],
+            ],
+
+            Post::class => [
+                'filterableAttributes' => ['user_id'],
+                'searchableAttributes' => ['anchor_text', 'domain', 'target_url'],
+            ],
+
+            Conversation::class => [
+                'filterableAttributes' => ['user_id'],
+                'searchableAttributes' => ['subject', 'domain'],
             ],
         ],
     ],

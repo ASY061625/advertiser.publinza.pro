@@ -4,7 +4,7 @@ import { Drawer } from '@shared/ui';
 import type { AdvertiserSharedProps } from '@shared/types';
 import type { Shell } from '@shared/types/shell';
 import { AnnouncementModal } from '../Components/shell/AnnouncementModal';
-import { CommandPalette } from '../Components/shell/CommandPalette';
+import { SearchPalette } from '../Components/search/SearchPalette';
 import { NotificationsDrawer } from '../Components/notifications/NotificationsDrawer';
 import { useLiveNotifications } from '../Components/notifications/useLiveNotifications';
 import { Header, type Crumb } from '../Components/shell/Header';
@@ -152,6 +152,7 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
                     user={user!}
                     onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     onOpenNotifications={() => setNotificationsOpen(true)}
+                    onOpenSearch={() => setPaletteOpen(true)}
                     onOpenMobileNav={() => setMobileNavOpen(true)}
                 />
 
@@ -191,7 +192,7 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
                 navigation later. */}
             {announcement !== null && <AnnouncementModal key={announcement.id} announcement={announcement} />}
 
-            <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+            <SearchPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         </div>
     );
 }
