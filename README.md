@@ -2652,7 +2652,51 @@ Every key is documented and grouped by service in `.env.example`. The ones worth
 make deploy ENV=production
 ```
 
+`make deploy` builds first and takes the site down second, so a failing build
+costs no downtime. It works whether PHP runs in the local Docker stack or
+natively on a server — the Makefile detects a running `php` service and falls
+back to `php artisan` on the host, because `docker compose exec` on a machine
+with no containers fails with a message about a service rather than about the
+deploy.
+
+Every recipe is anchored to the directory holding the Makefile. `make` does not
+change directory on its own, so a deploy hook that runs `make -C`, `make -f`, or
+simply starts somewhere else would otherwise run `npm ci` against whatever
+directory it happened to be in.
+
+Run `make preflight` on its own to check a server before trusting a deploy to
+it. It prints the resolved repository root, the Node and npm versions, and
+whether artisan will go through Docker.
+
+### `public/build` is not in the repository
+
+`.gitignore` excludes it, so a clone has no compiled assets and no
+`manifest.json` — and without a manifest every page answers "Vite manifest not
+found". The build step is therefore not optional on a server that deploys by
+pulling. `make build` fails loudly if the build produced no manifest, so that
+turns into a deploy-time error rather than a 500 found by a visitor.
+
+### "npm can't find package.json"
+
+`package.json` is committed at the repository root, and npm walks *up* from its
+working directory to find it — so running npm anywhere inside the checkout,
+including `public/`, works. The error only appears when npm runs outside the
+repository tree altogether.
+
+The error itself names the answer: `npm error path /somewhere/package.json` is
+the directory npm looked in. Compare it with the root `make preflight` prints.
+If they differ, the deploy is running npm somewhere that is not the checkout —
+a hook with its own working directory, or a docroot that is a sibling of the
+repository rather than `public/` inside it.
+
+### The rest
+
 Copy `docker/nginx/production.conf` to the web tier's `/etc/nginx/conf.d/`, issue
 certificates for `publinza.pro` and `app.publinza.pro`, and run Horizon under a process
 supervisor. Set `APP_DEBUG=false`, `FORCE_HTTPS=true`, `SESSION_SECURE_COOKIE=true` and
 `LOG_LEVEL=warning`, and rotate `MEILISEARCH_KEY` away from the development default.
+
+`make search-index` pushes the Scout index settings and imports every searchable
+model — the catalog, projects, posts and conversations. All four back the global
+palette, and a deploy that imports only the catalog leaves three of its groups
+silently empty: there is no error for a search against an index nothing filled.
