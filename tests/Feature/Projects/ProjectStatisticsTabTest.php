@@ -16,7 +16,7 @@ use App\Domain\System\Models\ExportJob;
 use App\Http\Controllers\Advertiser\ExportController;
 use App\Jobs\BuildStatisticsExportJob;
 use App\Models\User;
-use App\Notifications\ExportReadyNotification;
+use App\Notifications\Publinza\ExportReadyNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;

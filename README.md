@@ -2079,6 +2079,225 @@ steps, and takes the password.
 
 ---
 
+## Notifications
+
+Fifteen types, one Notification class each, three channels, and a drawer at the
+header bell.
+
+### Types and preferences are two different vocabularies
+
+There are fifteen *types* and thirteen *preference events*, and the fan-in is
+deliberate. A type is a template — one title shape, one icon, one colour, one
+deep link. A preference is a category somebody switches on and off. "Deadline
+approaching" and "deadline missed" are two different messages about the same
+thing and nobody wants to be asked about them separately; the same goes for an
+article arriving and an article being approved.
+
+`NotificationType::preference()` is where they meet. Every type names the event
+that governs it, so there is no type whose email is decided by something the
+notifications screen does not show. Building this added three rows to that
+screen — Order confirmed, Price changed in your cart, Report ready — because the
+alternative was four types governed by an unrelated switch, which is a lie in
+the UI.
+
+### The three channels
+
+`database` always. The record *is* the notification: the drawer reads it, and it
+stays there whatever the preferences say, so somebody who muted a type can still
+find out what happened by looking.
+
+`broadcast` when the in-app preference allows. This is the interruption — the
+badge moving in an open tab, and the browser notification. Turning in-app off
+means "keep it, don't tap me on the shoulder".
+
+`mail` when the email preference allows *and* the fifteen-minute window is open.
+
+`User::receivesBroadcastNotificationsOn()` is overridden to `advertiser.{id}`,
+the channel the shell already listens on and `routes/channels.php` already
+authorises. Laravel's default would have opened a second private channel per
+person, with a second authorisation round trip and one of them nobody remembers
+to guard.
+
+### Browser push, and what it actually reaches
+
+The `push` flag is decided on the server, against the preference, and carried in
+the broadcast payload — the browser only knows whether permission was granted,
+which is a different question from whether this person asked to be interrupted
+about *this*. The permission prompt is offered inside the drawer, and only to
+somebody who has already switched push on: a prompt that appears before anybody
+asked for anything is the one everybody denies, and a denial in Chrome is
+permanent.
+
+The honest limit: this raises a notification from a page that is open. Reaching
+a closed tab needs a service worker and a Web Push subscription, which this app
+does not have. The preference is real and works; its reach is "while Publinza is
+open somewhere".
+
+### One email per fifteen minutes, without losing the rest
+
+The rule is easy to satisfy wrongly. A plain throttle would meet it by
+*dropping* everything inside the window — five placements going live in one
+minute would be one email about the first and silence about the other four.
+
+So it is two mechanisms. `DigestGate::allow()` answers "may this be mailed now",
+and when the answer is no it records what was suppressed against
+`notification_digests`. `notifications:send-digests` runs every minute, finds the
+windows that have closed with something waiting, and sends one summary naming all
+of it. Nothing is dropped: it is either sent immediately or gathered into the
+next summary. The row is locked inside a transaction, because two notifications
+of the same type in the same second is exactly the case this exists for and also
+exactly the case where a read-then-write races.
+
+The gate runs in `shouldSend()`, not `via()`. `via()` decides whether this person
+wants the email at all — cheap, and it decides which channel jobs to queue.
+`shouldSend()` runs at the moment the mail would actually go out, which is when
+the clock should be read.
+
+### Grouping and collapsing happen on the server
+
+Today / Yesterday / Earlier is bucketed in `NotificationCentre`, in the reader's
+own timezone — which the server knows and a component several levels deep does
+not. Runs of three or more of a collapsible type fold into one line ("3 posts
+published") that opens into the items.
+
+*Runs*, not "everything of this type in the bucket". Three publications this
+morning and one this afternoon with a rejection between them is two separate
+stories, and merging them across the rejection would put the summary in the
+wrong place on the timeline.
+
+Two is never collapsed: it saves one line and costs a click. And a type that
+never arrives in bursts — a weekly summary — is never collapsible at all, or it
+would sit behind a disclosure triangle for no reason.
+
+### The row carries a finished sentence
+
+`toArray()` writes the rendered title, body and href, not ids for the client to
+reassemble. These rows are read back months later, and a title built in React
+from a post that has since been deleted reads "published on undefined".
+
+### Where they come from
+
+Post lifecycle notifications fire from `PostObserver`, the one place guaranteed
+to see every status change — a notification wired into the actions that move a
+status *today* is one missing from the action added next month. Two things about
+that turned out to matter:
+
+`preventLazyLoading` is armed in this application, and the observer runs on a
+post somebody else loaded. A bulk action selects posts without their advertiser,
+so reading `$post->advertiser` in the announcer threw and took the whole
+cancellation down with it — silently, because the controller catches
+`RuntimeException` and flashes an error nobody was asserting on. Everything is
+`loadMissing`ed now, which is an eager load the guard allows.
+
+And the send is deferred with `DB::afterCommit()`. `Post::transitionTo()` wraps
+its save in a transaction and the observer runs inside it, so sending from there
+would announce a publication a later rollback undid. An email saying your post
+is live is not retractable.
+
+The four notifications with no event to hang off — deadlines, low balance, cart
+price drift — come from `notifications:scan`, daily. Each is deduped against what
+has already been sent, read out of the notifications table itself; a scheduled
+scan without that is a scan that emails somebody every morning about the same
+late placement.
+
+### What this replaced
+
+Four notification classes already existed and were sending the same things
+outside this system: `OrderPlacedNotification`, `TopUpReceiptNotification`,
+`TeamReplyNotification` and the old `ExportReadyNotification`. They are gone,
+folded into their typed equivalents with their email copy intact. Two systems
+sending the same notification means one of them is not in the drawer, not gated
+by the digest, and not broadcasting.
+
+---
+
+## What's new — `/whats-new`
+
+The changelog, in three places: a drawer with the newest ten, a full page grouped
+by month and filterable by type, and a one-time modal for a major release.
+
+### Two acknowledgements, not one
+
+`last_seen_changelog_at` clears the header dot; `changelog_major_ack_at` dismisses
+the modal. They are separate columns on purpose — opening the drawer marks
+everything seen, and it must not also dismiss an announcement nobody read.
+Otherwise a major release is announced to whoever happened *not* to glance at the
+drawer first.
+
+The header follows the same split: a dot for anything unseen, a number only when
+one of the unseen entries is flagged major. A count on every routine fix would
+make the number mean "there is a changelog", which is not news.
+
+### The body is sanitised on read
+
+Entries are rich text written by staff in the admin panel, so `ChangelogHtml` is
+not a defence against advertisers — it is a defence against the admin panel. A
+changelog entry is the one piece of staff-authored HTML that renders inside every
+advertiser's session, which makes it the most valuable place in the product to
+land a script tag: one compromised staff account, or one paste of copied markup
+carrying an `onerror`, and it runs in everybody's browser at once.
+
+Sanitised on read rather than on write, deliberately: rows already in the table
+were written before this existed, and a sanitiser that only runs in the authoring
+path protects nothing that is already stored. Disallowed elements are *unwrapped*
+rather than deleted, so a body pasted out of an editor and wrapped in a stray
+`<div>` keeps its text.
+
+Images are served through the app, not from a public disk. These are product
+screenshots that go up before a release, and a guessable storage URL is how an
+unpublished entry's screenshot leaks.
+
+### Not paginated
+
+The full page loads every published entry. Grouping by month only works if the
+months are all there, and "load more" on a page whose whole job is being
+scannable is a way to hide the history.
+
+### Authoring
+
+Entries are written in the admin panel (file 02, prompt A11). Everything on this
+side is read-only.
+
+---
+
+## Four bugs this surfaced
+
+**Every hand-rolled `fetch` in the app 419'd after signing in.** Ten call sites
+read the CSRF token from `<meta name="csrf-token">`. That tag is rendered once,
+into the document that first loaded — and Inertia turns the login redirect into a
+client-side visit, so the document is never re-rendered and the tag keeps a token
+from before the session existed. Inertia's own requests were fine, because axios
+reads the `XSRF-TOKEN` cookie; everything written by hand was not. Proved in a
+browser: the same POST returned 419 with the meta token and 200 with the cookie.
+
+Fixed in two halves, because the two cases need different tokens. Headers go
+through `csrfHeaders()`, which prefers the cookie — encrypted, and re-set by
+Laravel on every response, so current by construction. Hidden `_token` form
+fields need the *plaintext* session token, which only the meta tag can carry, so
+the token is now a shared Inertia prop and `main.tsx` writes it back into the tag
+on every response. Nobody had noticed because most of those call sites were fire
+and forget, with a `.catch(() => undefined)` over the failure.
+
+**The What's new drawer fetched twice and painted over its own dots.** The effect
+depended on `onRead`, which the shell passes as an inline arrow — so calling it
+set state, re-rendered, produced a new function, and re-ran the effect. The
+second fetch came back with everything already marked seen, because the first one
+had marked it. Held in a ref now.
+
+**Marking all read left the header badge stale.** The count refresh was fired
+alongside the write rather than after it, so `/shell/counts` answered with the
+count from before. The drawer repaints optimistically; the header waits for the
+write.
+
+**`Post` had no `@property ContentMode $content_mode`.** PHPStan therefore typed
+the column as a string, decided `$post->content_mode !== ContentMode::PublisherWrites`
+was always true, and stopped analysing the rest of the method — silently, as an
+"unreachable statement" note. The code was correct at runtime; the check was not
+running. A by-reference closure in `NotificationCentre` was costing its own body
+the same way, and is a plain method now.
+
+---
+
 ## Layout
 
 ```

@@ -39,7 +39,7 @@ final class RefreshCompetitor
             'fetch_error' => null,
         ])->save();
 
-        FetchCompetitorMetricsJob::dispatch($competitor->id);
+        FetchCompetitorMetricsJob::dispatch($competitor->id, announce: true);
 
         return $competitor;
     }
@@ -70,7 +70,7 @@ final class RefreshCompetitor
             if ($fetchedAt === null || $fetchedAt->lessThan($cutoff)) {
                 $competitor->forceFill(['fetch_state' => FetchState::Pending])->save();
 
-                FetchCompetitorMetricsJob::dispatch($competitor->id);
+                FetchCompetitorMetricsJob::dispatch($competitor->id, announce: true);
             }
         }
     }

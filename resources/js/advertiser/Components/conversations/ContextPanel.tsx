@@ -3,6 +3,7 @@ import { Badge, DownloadIcon, ExternalLinkIcon } from '@shared/ui';
 import { cn } from '@shared/lib/cn';
 import { compactNumber, date, money, number } from '@shared/lib/format';
 import type { PostContext, ThreadContext, WebsiteContext } from '@shared/types/conversations';
+import { sessionToken } from '@shared/lib/csrf';
 
 /**
  * The far-right panel: what the conversation is about.
@@ -192,7 +193,7 @@ function PostPanel({ post }: { post: PostContext }) {
                     {/* The same endpoint the grid's bulk download uses, with one
                         id. A second download path would be a second place for
                         the article's filename and format to drift. */}
-                    <input type="hidden" name="_token" value={csrf()} />
+                    <input type="hidden" name="_token" value={sessionToken()} />
                     <input type="hidden" name="action" value="download" />
                     <input type="hidden" name="ids[]" value={post.id} />
 
@@ -235,6 +236,3 @@ function label(status: string): string {
     return status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
-function csrf(): string {
-    return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-}

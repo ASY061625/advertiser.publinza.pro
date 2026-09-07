@@ -52,6 +52,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $pending_email_sent_at
  * @property Carbon|null $notifications_paused_until
  * @property Carbon|null $deletion_requested_at
+ * @property Carbon|null $last_seen_changelog_at
+ * @property Carbon|null $changelog_major_ack_at
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -95,7 +97,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'pending_email_sent_at' => 'datetime',
             'notifications_paused_until' => 'datetime',
             'deletion_requested_at' => 'datetime',
-            'changelog_read_at' => 'datetime',
+            'last_seen_changelog_at' => 'datetime',
+            'changelog_major_ack_at' => 'datetime',
             'grid_preferences' => 'array',
             'two_factor_confirmed_at' => 'datetime',
             'password' => 'hashed',
@@ -172,6 +175,19 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // ---------------------------------------------------------- relationships
+
+    /**
+     * The channel broadcast notifications go out on.
+     *
+     * Overridden because Laravel's default is `App.Models.User.{id}`, and the
+     * shell already listens on `advertiser.{id}` — the one routes/channels.php
+     * authorises. Two private channels per person would mean two subscriptions,
+     * two authorisation round trips, and one of them nobody remembers to guard.
+     */
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return "advertiser.{$this->id}";
+    }
 
     /**
      * @return HasOne<Wallet, $this>

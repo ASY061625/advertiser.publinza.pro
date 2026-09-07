@@ -11,12 +11,14 @@ use App\Http\Controllers\Advertiser\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\Advertiser\BalanceController;
 use App\Http\Controllers\Advertiser\CartController;
 use App\Http\Controllers\Advertiser\CatalogController;
+use App\Http\Controllers\Advertiser\ChangelogController;
 use App\Http\Controllers\Advertiser\CheckoutController;
 use App\Http\Controllers\Advertiser\CompetitorController;
 use App\Http\Controllers\Advertiser\ConversationController;
 use App\Http\Controllers\Advertiser\DashboardController;
 use App\Http\Controllers\Advertiser\ExportController;
 use App\Http\Controllers\Advertiser\ListController;
+use App\Http\Controllers\Advertiser\NotificationCentreController;
 use App\Http\Controllers\Advertiser\NotificationPreferenceController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\PostGridController;
@@ -96,9 +98,33 @@ Route::middleware('auth')->group(function (): void {
      */
     Route::patch('/shell/sidebar', [ShellController::class, 'sidebar'])->name('shell.sidebar');
     Route::get('/shell/counts', [ShellController::class, 'counts'])->name('shell.counts');
-    Route::get('/shell/changelog', [ShellController::class, 'changelog'])->name('shell.changelog');
-    Route::get('/whats-new', [ShellController::class, 'whatsNew'])->name('whats-new');
     Route::get('/search', SearchController::class)->middleware('throttle:60,1')->name('search');
+
+    /*
+    | What's new — the drawer, the full page, the images and the "Got it" that
+    | dismisses a major release's modal.
+    */
+    Route::get('/shell/changelog', [ChangelogController::class, 'drawer'])->name('shell.changelog');
+    Route::get('/whats-new', [ChangelogController::class, 'index'])->name('whats-new');
+    Route::post('/whats-new/acknowledge', [ChangelogController::class, 'acknowledge'])->name('whats-new.ack');
+    Route::get('/whats-new/{entry}/image', [ChangelogController::class, 'image'])->name('whats-new.image');
+
+    /*
+    | The notification centre. Everything but /notifications is JSON: the drawer
+    | opens over whatever page you are on, and an Inertia visit to fill it would
+    | remount that page underneath it.
+    */
+    Route::get('/notifications', [NotificationCentreController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/list', [NotificationCentreController::class, 'list'])->name('notifications.list');
+    Route::post('/notifications/read-all', [NotificationCentreController::class, 'readAll'])
+        ->name('notifications.read-all');
+    Route::post('/notifications/read-many', [NotificationCentreController::class, 'readMany'])
+        ->name('notifications.read-many');
+    Route::post('/notifications/mark-all', [NotificationCentreController::class, 'readAllFromPage'])
+        ->name('notifications.mark-all');
+    // Below the collection routes, so "read-all" is never read as an id.
+    Route::post('/notifications/{notification}/read', [NotificationCentreController::class, 'read'])
+        ->name('notifications.read');
 
     /*
     | Two-factor. Rendered inside the profile's Security tab rather than on a

@@ -18,6 +18,7 @@ import { PostsTable, type RowAction } from './PostsTable';
 import { SavedViews } from './SavedViews';
 import { StatusTabs } from './StatusTabs';
 import { toRequest, usePostFilters } from './usePostFilters';
+import { csrfHeaders, sessionToken } from '@shared/lib/csrf';
 
 export type PostsView = 'table' | 'board';
 
@@ -149,7 +150,7 @@ export function PostsGrid({
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
-                'X-CSRF-TOKEN': csrf(),
+                ...csrfHeaders(),
             },
             credentials: 'same-origin',
             body: JSON.stringify({ order, hidden }),
@@ -191,7 +192,7 @@ export function PostsGrid({
         form.method = 'POST';
         form.action = '/posts/bulk';
         form.style.display = 'none';
-        form.append(hidden('_token', csrf()), hidden('action', 'download'));
+        form.append(hidden('_token', sessionToken()), hidden('action', 'download'));
 
         for (const id of ids) form.append(hidden('ids[]', String(id)));
 
@@ -501,9 +502,6 @@ function queryOf(filters: PostFilterState): URLSearchParams {
     return query;
 }
 
-function csrf(): string {
-    return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-}
 
 function hidden(name: string, value: string): HTMLInputElement {
     const input = document.createElement('input');

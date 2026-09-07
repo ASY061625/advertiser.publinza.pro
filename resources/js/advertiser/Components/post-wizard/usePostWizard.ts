@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PostWizardState } from '@shared/types/postWizard';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 /** Ten seconds, as specified: invisible to type through, short enough to matter. */
 const AUTOSAVE_MS = 10_000;
@@ -79,8 +80,7 @@ export function usePostWizard(initial: PostWizardState, initialStep: number, { d
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN':
-                        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+                    ...csrfHeaders(),
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({

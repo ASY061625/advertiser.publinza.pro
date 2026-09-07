@@ -24,7 +24,11 @@ export interface ShellConversation {
 export interface ShellCounts {
     cart: number;
     conversations: number;
+    /** Published entries this account has not seen. Drives the dot. */
     changelog: number;
+    /** How many of those are flagged major. Drives the number. */
+    changelogMajor: number;
+    notifications: number;
     favorites: number;
 }
 
@@ -45,15 +49,6 @@ export interface Shell {
     counts: ShellCounts;
     /** Null when no broadcaster is configured; the shell then polls instead. */
     echo: EchoConfig | null;
-}
-
-export interface ChangelogEntry {
-    id: number;
-    title: string;
-    body: string;
-    category: string;
-    publishedAt: string | null;
-    unread: boolean;
 }
 
 export interface SearchGroup {

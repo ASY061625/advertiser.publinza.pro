@@ -17,7 +17,7 @@ use App\Domain\Billing\Support\VolumeBonus;
 use App\Domain\Posts\Models\Post;
 use App\Domain\Trading\Models\Order;
 use App\Models\User;
-use App\Notifications\TopUpReceiptNotification;
+use App\Notifications\Publinza\TopUpConfirmedNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
@@ -176,7 +176,7 @@ it('adds funds, credits the bonus and writes two ledger rows', function (): void
         ->and(Transaction::query()->where('type', TransactionType::Deposit)->count())->toBe(1)
         ->and(Transaction::query()->where('type', TransactionType::Bonus)->count())->toBe(1);
 
-    Notification::assertSentTo($user, TopUpReceiptNotification::class);
+    Notification::assertSentTo($user, TopUpConfirmedNotification::class);
 });
 
 it('computes the bonus on the server, whatever the browser sent', function (): void {
@@ -241,7 +241,7 @@ it('does not credit a bank transfer until it is confirmed', function (): void {
     app(StartTopUp::class)->confirm($topUp);
 
     expect(Wallet::query()->where('user_id', $user->id)->value('available_cents'))->toBe(530_000);
-    Notification::assertSentTo($user, TopUpReceiptNotification::class);
+    Notification::assertSentTo($user, TopUpConfirmedNotification::class);
 });
 
 it('confirms a transfer once, however many times it is confirmed', function (): void {

@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { cn } from '@shared/lib/cn';
-import { ChevronRightIcon, HeartIcon, MenuIcon, MoreIcon, SparkleIcon, useDismiss } from '@shared/ui';
+import { BellIcon, ChevronRightIcon, HeartIcon, MenuIcon, MoreIcon, SparkleIcon, useDismiss } from '@shared/ui';
 import type { Shell, ShellCounts } from '@shared/types/shell';
 import type { User } from '@shared/types';
 import { BalancePill } from './BalancePill';
@@ -21,10 +21,19 @@ interface HeaderProps {
     counts: ShellCounts;
     user: User;
     onOpenWhatsNew: () => void;
+    onOpenNotifications: () => void;
     onOpenMobileNav: () => void;
 }
 
-export function Header({ crumbs, shell, counts, user, onOpenWhatsNew, onOpenMobileNav }: HeaderProps) {
+export function Header({
+    crumbs,
+    shell,
+    counts,
+    user,
+    onOpenWhatsNew,
+    onOpenNotifications,
+    onOpenMobileNav,
+}: HeaderProps) {
     const [overflowOpen, setOverflowOpen] = useState(false);
     const overflowRef = useDismiss<HTMLDivElement>(overflowOpen, () => setOverflowOpen(false));
 
@@ -91,8 +100,21 @@ export function Header({ crumbs, shell, counts, user, onOpenWhatsNew, onOpenMobi
                     menu below it. Balance and profile always stay visible. */}
                 <div className="hidden items-center gap-1.5 lg:flex">
                     <HeaderButton
+                        label="Notifications"
+                        count={counts.notifications}
+                        onClick={onOpenNotifications}
+                        icon={<BellIcon size={18} />}
+                    />
+
+                    {/*
+                        A dot for anything unseen, a number only when one of the
+                        unseen entries is a major release. A count on every
+                        routine fix would make the number mean "there is a
+                        changelog", which is not news.
+                    */}
+                    <HeaderButton
                         label="What's new"
-                        dot
+                        dot={counts.changelogMajor === 0}
                         count={counts.changelog}
                         onClick={onOpenWhatsNew}
                         icon={<SparkleIcon size={18} />}
@@ -123,7 +145,7 @@ export function Header({ crumbs, shell, counts, user, onOpenWhatsNew, onOpenMobi
                     <HeaderButton
                         label="More"
                         dot
-                        count={counts.changelog + counts.conversations + counts.cart}
+                        count={counts.notifications + counts.changelog + counts.conversations + counts.cart}
                         expanded={overflowOpen}
                         onClick={() => setOverflowOpen((v) => !v)}
                         icon={<MoreIcon size={18} />}
@@ -134,6 +156,23 @@ export function Header({ crumbs, shell, counts, user, onOpenWhatsNew, onOpenMobi
                             role="menu"
                             className="absolute right-0 z-50 mt-1 w-60 animate-scale-in overflow-hidden rounded-card border border-subtle bg-card py-1 shadow-card"
                         >
+                            <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                    setOverflowOpen(false);
+                                    onOpenNotifications();
+                                }}
+                                className="flex w-full items-center justify-between px-4 py-2.5 text-left text-base text-ink-700 hover:bg-sunken"
+                            >
+                                Notifications
+                                {counts.notifications > 0 && (
+                                    <span className="num rounded-pill bg-brand-subtle px-1.5 text-xs text-brand">
+                                        {counts.notifications}
+                                    </span>
+                                )}
+                            </button>
+
                             <button
                                 type="button"
                                 role="menuitem"

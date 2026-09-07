@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\DB;
  * post_status_history row — see PostObserver, which enforces both.
  *
  * @property PostStatus $status
+ * @property ContentMode $content_mode
  * @property int $price_cents
  * @property Carbon|null $published_at
  * @property Carbon|null $deadline_at

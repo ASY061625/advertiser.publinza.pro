@@ -1,34 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from '@inertiajs/react';
-import { Drawer, SkeletonText } from '@shared/ui';
-import { cn } from '@shared/lib/cn';
-import type { ChangelogEntry } from '@shared/types/shell';
+import { Drawer, SkeletonText, SparkleIcon } from '@shared/ui';
+import type { ChangelogEntry } from '@shared/types/notifications';
 import { date } from '@shared/lib/format';
-
-const CHIPS: Record<string, string> = {
-    new: 'bg-status-new-bg text-status-new-fg',
-    improvement: 'bg-status-posted-bg text-status-posted-fg',
-    improved: 'bg-status-posted-bg text-status-posted-fg',
-    fix: 'bg-status-progress-bg text-status-progress-fg',
-    fixed: 'bg-status-progress-bg text-status-progress-fg',
-};
-
-const LABELS: Record<string, string> = {
-    new: 'New',
-    improvement: 'Improved',
-    improved: 'Improved',
-    fix: 'Fixed',
-    fixed: 'Fixed',
-};
+import { ChangelogChip } from './ChangelogChip';
 
 /**
- * The 400px What's new drawer.
+ * The 480px What's new drawer, newest ten.
  *
  * Entries are fetched on open rather than shipped with every page: the shell
- * only needs the unread count to render, and the bodies are long.
+ * only needs the unseen count to render the icon, and the bodies are long.
  */
 export function WhatsNewDrawer({ open, onClose, onRead }: { open: boolean; onClose: () => void; onRead: () => void }) {
     const [entries, setEntries] = useState<ChangelogEntry[] | null>(null);
+
+    /*
+     * Held in a ref, and kept out of the effect's dependencies.
+     *
+     * The caller passes an inline arrow, so `onRead` is a new function on every
+     * render — and calling it sets state up in the shell, which re-renders,
+     * which produces another new function, which re-runs this effect. The
+     * second fetch is the bug: opening the drawer marks everything seen, so it
+     * comes back with every entry already read and paints over the dots the
+     * first response was carrying.
+     */
+    const read = useRef(onRead);
+    read.current = onRead;
 
     useEffect(() => {
         if (!open) return;
@@ -47,8 +44,9 @@ export function WhatsNewDrawer({ open, onClose, onRead }: { open: boolean; onClo
                 const data = (await response.json()) as { entries: ChangelogEntry[] };
                 setEntries(data.entries);
 
-                // The request marked everything read server-side; clear the dot.
-                onRead();
+                // The request marked everything seen server-side; clear the
+                // header's dot for this session.
+                read.current();
             } catch {
                 if (!cancelled) setEntries([]);
             }
@@ -57,52 +55,71 @@ export function WhatsNewDrawer({ open, onClose, onRead }: { open: boolean; onClo
         return () => {
             cancelled = true;
         };
-    }, [open, onRead]);
+    }, [open]);
 
     return (
-        <Drawer open={open} onClose={onClose} title="What's new" description="Changes to Publinza, newest first">
+        <Drawer
+            open={open}
+            onClose={onClose}
+            title="What's new"
+            description="Changes to Publinza, newest first"
+            footer={
+                <Link href="/whats-new" className="text-base text-brand underline" onClick={onClose}>
+                    See the full changelog
+                </Link>
+            }
+        >
             {entries === null ? (
                 <div className="flex flex-col gap-6">
                     <SkeletonText lines={4} />
                     <SkeletonText lines={4} />
                 </div>
             ) : entries.length === 0 ? (
-                <p className="text-base text-ink-500">Nothing published yet. We will note changes here.</p>
+                <div className="flex flex-col items-center gap-3 py-14 text-center">
+                    <span className="flex size-12 items-center justify-center rounded-pill bg-sunken text-ink-500">
+                        <SparkleIcon size={20} />
+                    </span>
+                    <p className="text-base text-ink-500">Nothing published yet. We will note changes here.</p>
+                </div>
             ) : (
                 <ol className="flex flex-col gap-7">
                     {entries.map((entry) => (
                         <li key={entry.id}>
-                            <div className="flex items-center gap-2.5">
-                                <span
-                                    className={cn(
-                                        'rounded-pill px-2.5 py-1 text-xs font-medium',
-                                        CHIPS[entry.category] ?? 'bg-sunken text-ink-500',
-                                    )}
-                                >
-                                    {LABELS[entry.category] ?? 'Update'}
-                                </span>
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                <ChangelogChip type={entry.type} label={entry.typeLabel} />
+
                                 {entry.publishedAt && (
                                     <time dateTime={entry.publishedAt} className="text-sm text-ink-500">
                                         {date(entry.publishedAt)}
                                     </time>
                                 )}
+
                                 {entry.unread && (
                                     <span aria-label="Unread" className="size-1.5 rounded-pill bg-brand" />
                                 )}
                             </div>
 
                             <h3 className="mt-2 font-sora text-md font-semibold text-ink-900">{entry.title}</h3>
-                            <p className="mt-1.5 text-base leading-relaxed text-ink-700">{entry.body}</p>
+
+                            {entry.imageUrl !== null && (
+                                <img
+                                    src={entry.imageUrl}
+                                    alt=""
+                                    loading="lazy"
+                                    className="mt-3 w-full rounded-card border border-subtle"
+                                />
+                            )}
+
+                            {/* Sanitised server-side against a fixed tag set —
+                                see ChangelogHtml. */}
+                            <div
+                                className="prose-changelog mt-1.5"
+                                dangerouslySetInnerHTML={{ __html: entry.body }}
+                            />
                         </li>
                     ))}
                 </ol>
             )}
-
-            <div className="mt-8 border-t border-subtle pt-4">
-                <Link href="/whats-new" className="text-base text-brand underline" onClick={onClose}>
-                    See the full changelog
-                </Link>
-            </div>
         </Drawer>
     );
 }

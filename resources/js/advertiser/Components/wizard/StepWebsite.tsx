@@ -4,6 +4,7 @@ import type { SitePreview, WizardOptions, WizardState } from '@shared/types/wiza
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 import { SitePreviewCard } from './SitePreviewCard';
 import { hostOf } from './validation';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 interface Props {
     state: WizardState;
@@ -36,7 +37,7 @@ export function StepWebsite({ state, options, errors, onChange }: Props) {
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
-                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+                ...csrfHeaders(),
             },
             credentials: 'same-origin',
             body: JSON.stringify({ url }),

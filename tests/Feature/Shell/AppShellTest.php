@@ -104,11 +104,10 @@ it('counts the cart, favourites, unread conversations and unread changelog', fun
         'body' => 'We published your post this morning.',
     ]);
 
-    ChangelogEntry::query()->create([
+    ChangelogEntry::factory()->create([
         'title' => 'Something new',
         'slug' => 'something-new',
-        'body' => 'A change.',
-        'category' => 'new',
+        'type' => 'new',
         'published_at' => now()->subHour(),
     ]);
 
@@ -164,13 +163,12 @@ it('serves badge counts for the poll fallback', function (): void {
 });
 
 it('marks the changelog read on open, but still flags what was unread', function (): void {
-    $user = shellUser(['changelog_read_at' => null]);
+    $user = shellUser(['last_seen_changelog_at' => null]);
 
-    ChangelogEntry::query()->create([
+    ChangelogEntry::factory()->create([
         'title' => 'Something new',
         'slug' => 'something-new',
-        'body' => 'A change.',
-        'category' => 'new',
+        'type' => 'new',
         'published_at' => now()->subHour(),
     ]);
 
@@ -179,7 +177,7 @@ it('marks the changelog read on open, but still flags what was unread', function
     // The entry was unread when the drawer opened, so it renders as unread…
     expect($response->json('entries.0.unread'))->toBeTrue()
         // …and is read from now on.
-        ->and($user->fresh()->changelog_read_at)->not->toBeNull();
+        ->and($user->fresh()->last_seen_changelog_at)->not->toBeNull();
 
     $this->actingAs($user->fresh())
         ->get(advertiserUrl('/dashboard'))
@@ -216,4 +214,19 @@ it('keeps the shell off the auth screens', function (): void {
     $this->get(advertiserUrl('/login'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('shell', null));
+});
+
+it('shares a CSRF token that is current after signing in', function (): void {
+    $user = shellUser();
+
+    /*
+     * The layout's <meta> tag is rendered once, into the document that first
+     * loaded, and signing in regenerates the session token without re-rendering
+     * it — so every hand-rolled fetch and hidden _token field carrying that tag
+     * would 419. main.tsx rewrites the tag from this prop on every response.
+     */
+    $this->actingAs($user)
+        ->get(advertiserUrl('/dashboard'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('csrfToken', fn (?string $token): bool => $token === session()->token()));
 });

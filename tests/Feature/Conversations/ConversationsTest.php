@@ -17,7 +17,7 @@ use App\Domain\Posts\Enums\PostStatus;
 use App\Domain\Posts\Models\Post;
 use App\Events\ConversationActivity;
 use App\Models\User;
-use App\Notifications\TeamReplyNotification;
+use App\Notifications\Publinza\MessageReceivedNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -405,7 +405,7 @@ it('broadcasts and emails when the team replies', function (): void {
     );
 
     Event::assertDispatched(ConversationActivity::class);
-    Notification::assertSentTo($user, TeamReplyNotification::class);
+    Notification::assertSentTo($user, MessageReceivedNotification::class);
 });
 
 it('says nothing to anybody when the advertiser writes', function (): void {

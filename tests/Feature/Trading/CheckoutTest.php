@@ -16,7 +16,7 @@ use App\Domain\Trading\Enums\ContentMode;
 use App\Domain\Trading\Models\CartItem;
 use App\Domain\Trading\Models\Order;
 use App\Models\User;
-use App\Notifications\OrderPlacedNotification;
+use App\Notifications\Publinza\OrderConfirmedNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -223,7 +223,7 @@ it('places the order, freezes the money and empties the cart, all at once', func
     expect(CartItem::query()->count())->toBe(0);
     expect(Invoice::query()->where('order_id', $order->id)->exists())->toBeTrue();
 
-    Notification::assertSentTo($user, OrderPlacedNotification::class);
+    Notification::assertSentTo($user, OrderConfirmedNotification::class);
 });
 
 it('leaves a line with no article as a draft rather than refusing the order', function (): void {

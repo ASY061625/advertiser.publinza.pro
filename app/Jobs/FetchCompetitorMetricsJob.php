@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Domain\Intelligence\Actions\FetchCompetitorMetrics;
 use App\Domain\Intelligence\Enums\FetchState;
 use App\Domain\Intelligence\Models\Competitor;
+use App\Notifications\Publinza\CompetitorReportReadyNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -31,7 +32,16 @@ final class FetchCompetitorMetricsJob implements ShouldQueue
 
     public int $timeout = 120;
 
-    public function __construct(public readonly int $competitorId) {}
+    /**
+     * @param  bool  $announce  True only for a refresh somebody asked for. The
+     *                          background refill runs on every read of the tab,
+     *                          and a notification per row per read would be a
+     *                          notification for something nobody did.
+     */
+    public function __construct(
+        public readonly int $competitorId,
+        public readonly bool $announce = false,
+    ) {}
 
     public function handle(FetchCompetitorMetrics $fetch): void
     {
@@ -44,6 +54,23 @@ final class FetchCompetitorMetricsJob implements ShouldQueue
         }
 
         $fetch->handle($competitor);
+
+        if (! $this->announce) {
+            return;
+        }
+
+        $project = $competitor->project;
+        $advertiser = $project?->owner;
+
+        if ($project === null || $advertiser === null) {
+            return;
+        }
+
+        $advertiser->notify(new CompetitorReportReadyNotification(
+            $project->id,
+            $project->name,
+            $project->competitors()->count(),
+        ));
     }
 
     /**

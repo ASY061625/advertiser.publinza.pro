@@ -42,6 +42,21 @@ void createInertiaApp({
             const formats = page.props.formats as Partial<FormatConfig> | undefined;
 
             if (formats) configureFormats(formats);
+
+            /*
+             * And the CSRF token, for the same reason.
+             *
+             * The meta tag is written once into the document that first loaded.
+             * Signing in regenerates the session token and Inertia turns the
+             * redirect into a client-side visit, so the tag is left holding a
+             * token from before the session existed — and every hand-rolled
+             * fetch and hidden _token field carrying it gets a 419. Rewriting
+             * it from the shared prop keeps it true after every response.
+             */
+            const token = page.props.csrfToken;
+            const tag = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]');
+
+            if (typeof token === 'string' && tag !== null) tag.content = token;
         };
 
         apply(props.initialPage);

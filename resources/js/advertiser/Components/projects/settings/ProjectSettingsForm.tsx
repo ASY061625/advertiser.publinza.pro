@@ -12,6 +12,7 @@ import { LandingPageEditor } from '../LandingPageEditor';
 import { DangerZone } from './DangerZone';
 import { SettingsNav, SettingsSection } from './SettingsNav';
 import { TargetingMatchCard } from './TargetingMatchCard';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 interface Props {
     project: ProjectDetail;
@@ -124,7 +125,7 @@ export function ProjectSettingsForm({ project, settings }: Props) {
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
-                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+                ...csrfHeaders(),
             },
             credentials: 'same-origin',
             body: JSON.stringify({ url }),

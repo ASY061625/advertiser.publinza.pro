@@ -188,6 +188,43 @@
         @apply rounded bg-sunken px-1 py-0.5 text-base;
     }
 
+    /*
+     * The changelog's rich text.
+     *
+     * Same element-styled approach as .prose-publinza, tightened for the three
+     * places a release note appears — a 480px drawer, a modal and a card — none
+     * of which have room for article spacing. The tag set is fixed by
+     * ChangelogHtml, so this covers all of it.
+     */
+    .prose-changelog > * + * {
+        @apply mt-3;
+    }
+
+    .prose-changelog p {
+        @apply text-base leading-relaxed text-ink-700;
+    }
+
+    .prose-changelog h3,
+    .prose-changelog h4 {
+        @apply mt-4 font-sora text-base font-semibold text-ink-900;
+    }
+
+    .prose-changelog a {
+        @apply text-brand underline;
+    }
+
+    .prose-changelog ul {
+        @apply flex list-disc flex-col gap-1.5 pl-5 text-base leading-relaxed text-ink-700;
+    }
+
+    .prose-changelog ol {
+        @apply flex list-decimal flex-col gap-1.5 pl-5 text-base leading-relaxed text-ink-700;
+    }
+
+    .prose-changelog code {
+        @apply rounded bg-sunken px-1 py-0.5 text-sm;
+    }
+
     /* Sticky table chrome. Kept in CSS rather than utility soup because the
        z-index relationship between the header, the first column and their
        intersection has to stay consistent. */

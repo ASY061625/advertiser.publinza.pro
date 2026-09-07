@@ -3,12 +3,16 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Drawer } from '@shared/ui';
 import type { AdvertiserSharedProps } from '@shared/types';
 import type { Shell } from '@shared/types/shell';
+import { AnnouncementModal } from '../Components/shell/AnnouncementModal';
 import { CommandPalette } from '../Components/shell/CommandPalette';
+import { NotificationsDrawer } from '../Components/notifications/NotificationsDrawer';
+import { useLiveNotifications } from '../Components/notifications/useLiveNotifications';
 import { Header, type Crumb } from '../Components/shell/Header';
 import { Sidebar } from '../Components/shell/Sidebar';
 import { WhatsNewDrawer } from '../Components/shell/WhatsNewDrawer';
 import { useFlashToasts } from '../Components/shell/useFlashToasts';
 import { useShellCounts } from '../Components/shell/useShellCounts';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 const SIDEBAR_KEY = 'publinza.sidebar.collapsed';
 
@@ -31,6 +35,7 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
     const page = usePage<AdvertiserSharedProps & { shell: Shell }>();
     const shell = page.props.shell;
     const user = page.props.auth.user;
+    const announcement = page.props.announcement;
 
     const [collapsed, setCollapsed] = useState<boolean>(() => {
         try {
@@ -45,10 +50,20 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
 
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
     const [changelogRead, setChangelogRead] = useState(false);
 
-    const { counts } = useShellCounts(shell.counts, shell.echo, user?.id ?? null);
+    const { counts, refresh } = useShellCounts(shell.counts, shell.echo, user?.id ?? null);
+
+    // Wrapped rather than passed through: refresh() returns a promise nobody
+    // awaits, and handing one to a void-returning callback is how an unhandled
+    // rejection ends up with no stack.
+    const refreshCounts = useCallback(() => void refresh(), [refresh]);
+
+    // A notification arriving moves the bell without waiting for the poll, and
+    // may raise a browser notification when the account asked for one.
+    useLiveNotifications(shell.echo, user?.id ?? null, refreshCounts);
 
     // The server's ->with('success'/'error') messages, surfaced. Here rather
     // than per page, because every redirect in the app carries one.
@@ -71,7 +86,7 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+                    ...csrfHeaders(),
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({ collapsed: next }),
@@ -107,6 +122,7 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
     })();
 
     const changelogCount = changelogRead ? 0 : counts.changelog;
+    const changelogMajor = changelogRead ? 0 : counts.changelogMajor;
 
     return (
         <div className="min-h-screen bg-canvas">
@@ -132,9 +148,10 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
                 <Header
                     crumbs={crumbs ?? [{ label: title }]}
                     shell={shell}
-                    counts={{ ...counts, changelog: changelogCount }}
+                    counts={{ ...counts, changelog: changelogCount, changelogMajor }}
                     user={user!}
                     onOpenWhatsNew={() => setWhatsNewOpen(true)}
+                    onOpenNotifications={() => setNotificationsOpen(true)}
                     onOpenMobileNav={() => setMobileNavOpen(true)}
                 />
 
@@ -157,11 +174,22 @@ export function AppShell({ title, crumbs, children }: AppShellProps) {
                 />
             </Drawer>
 
+            <NotificationsDrawer
+                open={notificationsOpen}
+                onClose={() => setNotificationsOpen(false)}
+                onCountsChanged={refreshCounts}
+            />
+
             <WhatsNewDrawer
                 open={whatsNewOpen}
                 onClose={() => setWhatsNewOpen(false)}
                 onRead={() => setChangelogRead(true)}
             />
+
+            {/* A major release, once. Rendered from a shared prop so it is on
+                screen on the first frame after signing in rather than one
+                navigation later. */}
+            {announcement !== null && <AnnouncementModal key={announcement.id} announcement={announcement} />}
 
             <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         </div>

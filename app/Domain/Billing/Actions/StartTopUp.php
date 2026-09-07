@@ -14,7 +14,7 @@ use App\Domain\Billing\Models\Wallet;
 use App\Domain\Billing\Support\VolumeBonus;
 use App\Events\ShellCountsChanged;
 use App\Models\User;
-use App\Notifications\TopUpReceiptNotification;
+use App\Notifications\Publinza\TopUpConfirmedNotification;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -85,7 +85,7 @@ final class StartTopUp
 
         $topUp->refresh();
 
-        $user->notify(new TopUpReceiptNotification($topUp));
+        $user->notify(TopUpConfirmedNotification::for($topUp));
 
         return $topUp;
     }
@@ -118,7 +118,7 @@ final class StartTopUp
 
         $topUp->refresh();
 
-        $user->notify(new TopUpReceiptNotification($topUp));
+        $user->notify(TopUpConfirmedNotification::for($topUp));
 
         return $topUp;
     }

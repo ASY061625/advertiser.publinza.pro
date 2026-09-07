@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advertiser;
 
-use App\Domain\System\Models\ChangelogEntry;
 use App\Http\Controllers\Controller;
 use App\Support\ShellData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Response;
 
 /**
- * The shell's own endpoints: preference writes, the changelog drawer, the
- * command palette and the poll fallback.
+ * The shell's own endpoints: preference writes and the badge-count poll.
+ *
+ * The changelog moved to ChangelogController when it grew a filtered page, an
+ * image route and an announcement to acknowledge.
  */
 class ShellController extends Controller
 {
@@ -36,44 +36,5 @@ class ShellController extends Controller
     public function counts(Request $request, ShellData $shell): JsonResponse
     {
         return response()->json($shell->forUser($request->user())['counts']);
-    }
-
-    /**
-     * The What's new drawer. Opening it marks everything read, which is why
-     * this is a POST-shaped read rather than a plain GET.
-     */
-    public function changelog(Request $request): JsonResponse
-    {
-        $entries = ChangelogEntry::query()
-            ->published()
-            ->latest('published_at')
-            ->take(20)
-            ->get(['id', 'title', 'body', 'category', 'published_at']);
-
-        $lastRead = $request->user()->changelog_read_at;
-
-        $payload = $entries->map(fn (ChangelogEntry $entry): array => [
-            'id' => $entry->id,
-            'title' => $entry->title,
-            'body' => $entry->body,
-            'category' => $entry->category,
-            'publishedAt' => $entry->published_at?->toIso8601String(),
-            'unread' => $lastRead === null || $entry->published_at?->greaterThan($lastRead),
-        ])->all();
-
-        // Marked read after the payload is built, so the entries that were
-        // unread when the drawer opened still render as unread.
-        $request->user()->forceFill(['changelog_read_at' => now()])->save();
-
-        return response()->json(['entries' => $payload]);
-    }
-
-    public function whatsNew(Request $request): Response
-    {
-        $entries = ChangelogEntry::query()->published()->latest('published_at')->paginate(25);
-
-        $request->user()->forceFill(['changelog_read_at' => now()])->save();
-
-        return inertia('WhatsNew', ['entries' => $entries]);
     }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LandingPageRow, WizardState } from '@shared/types/wizard';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 export const EMPTY_ROW = (): LandingPageRow => ({
     key: `row-${Math.random().toString(36).slice(2, 10)}`,
@@ -67,7 +68,7 @@ export function useProjectWizard(initial: WizardState, initialStep: number) {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+                    ...csrfHeaders(),
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({

@@ -13,7 +13,7 @@ use App\Domain\Messaging\Models\Message;
 use App\Domain\Messaging\Models\MessageAttachment;
 use App\Events\ConversationActivity;
 use App\Events\ShellCountsChanged;
-use App\Notifications\TeamReplyNotification;
+use App\Notifications\Publinza\MessageReceivedNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
@@ -123,6 +123,6 @@ final class PostMessage
             return;
         }
 
-        $advertiser->notify(new TeamReplyNotification($conversation, $message));
+        $advertiser->notify(MessageReceivedNotification::for($conversation, $message));
     }
 }

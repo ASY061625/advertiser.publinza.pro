@@ -61,6 +61,27 @@ class HandleAdvertiserInertiaRequests extends Middleware
             // Everything the persistent shell renders. A closure, so an
             // Inertia partial reload that does not ask for it pays nothing.
             'shell' => fn (): ?array => $user === null ? null : $this->shellData->forUser($user),
+            /*
+             * The session's current CSRF token.
+             *
+             * The <meta> tag in the layout is rendered once, into the document
+             * that first loaded, and signing in regenerates the session token
+             * without re-rendering that document — so from the first sign-in
+             * onwards the tag holds a token the server no longer accepts. This
+             * travels with every response; main.tsx writes it back into the tag
+             * so the places that post a hidden _token field stay correct.
+             */
+            'csrfToken' => fn (): string => $request->session()->token(),
+            /*
+             * The one major release that still owes this person a modal.
+             *
+             * Shared rather than fetched on mount: it has to be on screen on
+             * the first frame after signing in, and a component that asks for
+             * it afterwards announces the release one navigation late.
+             */
+            'announcement' => fn (): ?array => $user === null
+                ? null
+                : $this->shellData->majorAnnouncement($user),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

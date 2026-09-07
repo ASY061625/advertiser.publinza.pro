@@ -8,7 +8,7 @@ use App\Domain\Analytics\Actions\BuildStatisticsExport;
 use App\Domain\Analytics\DTOs\DateRange;
 use App\Domain\Projects\Models\Project;
 use App\Domain\System\Models\ExportJob;
-use App\Notifications\ExportReadyNotification;
+use App\Notifications\Publinza\ExportReadyNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -88,7 +88,7 @@ class BuildStatisticsExportJob implements ShouldQueue
             // retrying, but it is not a reason to tell somebody their export
             // failed when it is sitting on disk.
             try {
-                $this->export->user?->notify(new ExportReadyNotification($this->export, $project->name));
+                $this->export->user?->notify(ExportReadyNotification::for($this->export, "{$project->name} statistics"));
             } catch (Throwable $e) {
                 Log::warning('Export built but could not be announced.', [
                     'export_id' => $this->export->id,

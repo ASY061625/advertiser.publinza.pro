@@ -257,6 +257,48 @@ export const WalletIcon = (p: IconProps) => (
         <path d="M16 12h4v4h-4a2 2 0 0 1 0-4Z" />
     </Svg>
 );
+export const BellIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </Svg>
+);
+
+export const ClockIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+    </Svg>
+);
+
+export const DocumentIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5M9 13h6M9 17h4" />
+    </Svg>
+);
+
+export const ChartIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M3 3v18h18" />
+        <path d="M7 15v-4M12 15V7M17 15v-6" />
+    </Svg>
+);
+
+export const TagIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M20.6 13.4 12 22l-9-9V4a1 1 0 0 1 1-1h8z" />
+        <circle cx="7.5" cy="7.5" r="1.2" />
+    </Svg>
+);
+
+export const ReceiptIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z" />
+        <path d="M9 8h6M9 12h6" />
+    </Svg>
+);
+
 export const MenuIcon = (p: IconProps) => (
     <Svg {...p}>
         <path d="M4 7h16M4 12h16M4 17h16" />

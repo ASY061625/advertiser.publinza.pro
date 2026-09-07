@@ -4,6 +4,7 @@ import type { ImportReport, MovedRecord } from './lists';
 // its colours cannot drift apart.
 export type { StatusKey } from '@shared/ui';
 
+import type { Announcement } from './notifications';
 import type { Shell } from './shell';
 
 export interface User {
@@ -56,6 +57,17 @@ export interface AdvertiserSharedProps extends SharedProps {
     balanceCents: number;
     /** Null before sign-in; every authenticated page has it. */
     shell: Shell | null;
+    /**
+     * A major release this account has not acknowledged, or null. Shared so it
+     * can be on screen on the first frame rather than one navigation late.
+     */
+    announcement: Announcement | null;
+    /**
+     * The session's current CSRF token, rewritten into the layout's meta tag on
+     * every navigation — see main.tsx. Without it the tag holds whatever the
+     * document was first rendered with, which stops being true at sign-in.
+     */
+    csrfToken: string;
 }
 
 export interface AdminSharedProps extends SharedProps {

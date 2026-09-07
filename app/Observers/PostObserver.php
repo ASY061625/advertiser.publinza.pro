@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Domain\Notifications\Support\PostLifecycleAnnouncer;
 use App\Domain\Posts\Enums\PostStatus;
 use App\Domain\Posts\Models\Post;
 use App\Domain\Posts\Models\PostStatusHistory;
@@ -62,6 +63,16 @@ class PostObserver
         $from = $this->statusFrom($post->getOriginal('status'));
 
         $this->record($post, $from, $post->status);
+
+        /*
+         * And tells the advertiser, from the same one place.
+         *
+         * Here rather than in the actions that move a status today: this
+         * observer is the only thing guaranteed to see every change, and a
+         * notification wired into today's call sites is one missing from the
+         * call site added next month.
+         */
+        app(PostLifecycleAnnouncer::class)->announce($post, $from, $post->status);
     }
 
     private function record(Post $post, ?PostStatus $from, PostStatus $to): void

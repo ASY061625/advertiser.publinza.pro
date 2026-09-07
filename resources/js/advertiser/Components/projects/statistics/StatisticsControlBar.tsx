@@ -4,6 +4,7 @@ import { Button, ChevronDownIcon, DownloadIcon, Select, useDismiss, useToast } f
 import type { RangeKey } from '@shared/types/dashboard';
 import type { StatisticsGranularity } from '@shared/types/statistics';
 import { DateRangeControl, type RangeSelection } from '../../dashboard/DateRangeControl';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 interface Props {
     projectId: number;
@@ -118,7 +119,7 @@ function ExportButton({ projectId, query }: { projectId: number; query: Record<s
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
-                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+                ...csrfHeaders(),
             },
             credentials: 'same-origin',
             body: JSON.stringify({ format }),

@@ -23,6 +23,9 @@ enum NotificationEvent: string
     case BalanceLow = 'balance_low';
     case TopUpConfirmed = 'top_up_confirmed';
     case RefundProcessed = 'refund_processed';
+    case OrderConfirmed = 'order_confirmed';
+    case PriceChanged = 'price_changed';
+    case ReportReady = 'report_ready';
     case WeeklySummary = 'weekly_summary';
     case ProductUpdates = 'product_updates';
 
@@ -37,6 +40,9 @@ enum NotificationEvent: string
             self::BalanceLow => 'Balance low',
             self::TopUpConfirmed => 'Top-up confirmed',
             self::RefundProcessed => 'Refund processed',
+            self::OrderConfirmed => 'Order confirmed',
+            self::PriceChanged => 'Price changed in your cart',
+            self::ReportReady => 'Report ready',
             self::WeeklySummary => 'Weekly summary',
             self::ProductUpdates => 'Product updates',
         };
@@ -53,6 +59,9 @@ enum NotificationEvent: string
             self::BalanceLow => 'Your balance is running low for what you have queued.',
             self::TopUpConfirmed => 'Money reached your balance.',
             self::RefundProcessed => 'Money came back to your balance.',
+            self::OrderConfirmed => 'An order was placed and the money was frozen against it.',
+            self::PriceChanged => 'A site in your cart changed price before you checked out.',
+            self::ReportReady => 'A competitor report or an export you asked for has finished.',
             self::WeeklySummary => 'What happened across your projects last week.',
             self::ProductUpdates => 'New features and changes to how Publinza works.',
         };
@@ -72,6 +81,7 @@ enum NotificationEvent: string
             self::PostRejected,
             self::TopUpConfirmed,
             self::RefundProcessed,
+            self::OrderConfirmed,
         ], true);
     }
 
@@ -89,6 +99,9 @@ enum NotificationEvent: string
             self::WeeklySummary => ['email' => true, 'in_app' => false, 'push' => false],
             self::ProductUpdates => ['email' => false, 'in_app' => true, 'push' => false],
             self::NewMessage => ['email' => true, 'in_app' => true, 'push' => true],
+            // You asked for the report. It arriving is not news worth an email
+            // unless you say so — the tab you started it from is still open.
+            self::ReportReady => ['email' => false, 'in_app' => true, 'push' => true],
             default => ['email' => true, 'in_app' => true, 'push' => false],
         };
     }

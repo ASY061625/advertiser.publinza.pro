@@ -6,13 +6,16 @@ namespace App\Support;
 
 use App\Domain\Catalog\Models\Favorite;
 use App\Domain\Messaging\Models\Conversation;
+use App\Domain\Notifications\Support\NotificationCentre;
 use App\Domain\Projects\Enums\ProjectStatus;
 use App\Domain\Projects\Models\Project;
 use App\Domain\System\Models\ChangelogEntry;
+use App\Domain\System\Support\ChangelogHtml;
 use App\Domain\Trading\Models\Cart;
 use App\Domain\Trading\Models\CartItem;
 use App\Domain\Trading\Support\CartPricer;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 /**
@@ -33,7 +36,10 @@ final class ShellData
 
     private const PREVIEW_LIMIT = 5;
 
-    public function __construct(private readonly CartPricer $pricer) {}
+    public function __construct(
+        private readonly CartPricer $pricer,
+        private readonly NotificationCentre $centre,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -63,6 +69,11 @@ final class ShellData
                 'cart' => $cart?->items->count() ?? 0,
                 'conversations' => $this->unreadConversations($user),
                 'changelog' => $this->unreadChangelog($user),
+                // Split from the count above because the header renders them
+                // differently: a dot for anything unseen, a number only when
+                // one of the unseen ones is a major release.
+                'changelogMajor' => $this->unseenMajorChangelog($user),
+                'notifications' => $this->centre->unreadCount($user),
                 'favorites' => Favorite::query()->where('user_id', $user->id)->count(),
             ],
             // Null unless a broadcaster is configured. The shell falls back to
@@ -172,13 +183,61 @@ final class ShellData
 
     private function unreadChangelog(User $user): int
     {
+        return $this->unseenChangelog($user)->count();
+    }
+
+    private function unseenMajorChangelog(User $user): int
+    {
+        return $this->unseenChangelog($user)->where('is_major', true)->count();
+    }
+
+    /**
+     * @return Builder<ChangelogEntry>
+     */
+    private function unseenChangelog(User $user): Builder
+    {
         return ChangelogEntry::query()
             ->published()
             ->when(
-                $user->changelog_read_at !== null,
-                fn ($q) => $q->where('published_at', '>', $user->changelog_read_at),
+                $user->last_seen_changelog_at !== null,
+                fn ($q) => $q->where('published_at', '>', $user->last_seen_changelog_at),
+            );
+    }
+
+    /**
+     * The one major entry that still owes somebody a modal, if there is one.
+     *
+     * Keyed on changelog_major_ack_at rather than last_seen_changelog_at: the
+     * drawer clears the dot for everything, and it must not also dismiss an
+     * announcement nobody has actually seen.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function majorAnnouncement(User $user): ?array
+    {
+        $entry = ChangelogEntry::query()
+            ->published()
+            ->where('is_major', true)
+            ->when(
+                $user->changelog_major_ack_at !== null,
+                fn ($q) => $q->where('published_at', '>', $user->changelog_major_ack_at),
             )
-            ->count();
+            ->latest('published_at')
+            ->first();
+
+        if ($entry === null) {
+            return null;
+        }
+
+        return [
+            'id' => $entry->id,
+            'title' => $entry->title,
+            'body' => ChangelogHtml::clean($entry->body),
+            'type' => $entry->type->value,
+            'typeLabel' => $entry->type->label(),
+            'imageUrl' => $entry->imageUrl(),
+            'publishedAt' => $entry->published_at?->toIso8601String(),
+        ];
     }
 
     /**

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import type { ConversationMessage } from '@shared/types/conversations';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 /** A message the browser has drawn but the server has not confirmed. */
 export interface PendingMessage extends ConversationMessage {
@@ -54,7 +55,7 @@ export function useSendMessage(threadId: number | null) {
                     headers: {
                         Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrf(),
+                        ...csrfHeaders(),
                     },
                     credentials: 'same-origin',
                     body,
@@ -172,6 +173,3 @@ function newToken(): string {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-function csrf(): string {
-    return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-}

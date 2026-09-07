@@ -20,7 +20,7 @@ use App\Domain\Trading\Models\Cart;
 use App\Domain\Trading\Models\CartItem;
 use App\Domain\Trading\Models\Order;
 use App\Models\User;
-use App\Notifications\OrderPlacedNotification;
+use App\Notifications\Publinza\OrderConfirmedNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -421,7 +421,7 @@ it('places an order for just this line and leaves the rest of the cart alone', f
         ->and(CartItem::query()->pluck('id')->all())->toBe([$existing->id])
         ->and(Wallet::query()->where('user_id', $user->id)->value('frozen_cents'))->toBe(200_00);
 
-    Notification::assertSentTo($user, OrderPlacedNotification::class);
+    Notification::assertSentTo($user, OrderConfirmedNotification::class);
 });
 
 it('does not spend the cart’s promo code on a one-line order', function (): void {

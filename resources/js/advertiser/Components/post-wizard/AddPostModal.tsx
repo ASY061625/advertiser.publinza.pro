@@ -17,6 +17,7 @@ import { StepReview } from './StepReview';
 import { StepWebsite } from './StepWebsite';
 import { WizardSteps } from './WizardSteps';
 import { blankState, fromDraft, usePostWizard } from './usePostWizard';
+import { csrfHeaders } from '@shared/lib/csrf';
 
 interface Props {
     open: boolean;
@@ -342,9 +343,7 @@ export function AddPostModal({ open, onClose, projectId, resume }: Props) {
                                     method: 'DELETE',
                                     headers: {
                                         Accept: 'application/json',
-                                        'X-CSRF-TOKEN':
-                                            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-                                                ?.content ?? '',
+                                        ...csrfHeaders(),
                                     },
                                     credentials: 'same-origin',
                                 }).catch(() => undefined);

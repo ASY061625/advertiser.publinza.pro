@@ -19,7 +19,7 @@ use App\Domain\Trading\Models\CartItem;
 use App\Domain\Trading\Models\Order;
 use App\Domain\Trading\Support\CartPricer;
 use App\Models\User;
-use App\Notifications\OrderPlacedNotification;
+use App\Notifications\Publinza\OrderConfirmedNotification;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -133,7 +133,11 @@ final class PlaceOrder
 
         // Outside the transaction, and after it: a notification about an order
         // that did not commit is worse than a notification that arrives late.
-        $user->notify(new OrderPlacedNotification($order));
+        $user->notify(OrderConfirmedNotification::for(
+            $order,
+            $order->posts()->count(),
+            $order->posts()->where('status', PostStatus::Draft)->count(),
+        ));
 
         return $order;
     }
