@@ -1,6 +1,7 @@
 import { cn } from '@shared/lib/cn';
 import { IconButton } from './IconButton';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { number } from '@shared/lib/format';
 
 export interface PaginationProps {
     page: number;
@@ -40,7 +41,7 @@ export function Pagination({ page, pageCount, total, perPage, onPageChange, clas
         <nav aria-label="Pagination" className={cn('flex flex-wrap items-center justify-between gap-3', className)}>
             {total !== undefined && from !== null && to !== null ? (
                 <p className="num text-sm text-ink-500">
-                    {from.toLocaleString('en-US')}–{to.toLocaleString('en-US')} of {total.toLocaleString('en-US')}
+                    {number(from)}–{number(to)} of {number(total)}
                 </p>
             ) : (
                 <span />

@@ -10,6 +10,7 @@ import { StepWebsite } from '../../Components/wizard/StepWebsite';
 import { WizardProgress } from '../../Components/wizard/WizardProgress';
 import { blankState, fromPayload, toPayload, useProjectWizard } from '../../Components/wizard/useProjectWizard';
 import { missingFor } from '../../Components/wizard/validation';
+import { time } from '@shared/lib/format';
 
 interface Props extends WizardOptions {
     draft: { step: number; payload: Record<string, unknown> } | null;
@@ -171,7 +172,7 @@ function DraftStatus({ saving, savedAt }: { saving: boolean; savedAt: string | n
 
     return (
         <span className={cn('text-sm text-ink-500')}>
-            Draft saved {new Date(savedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            Draft saved {time(savedAt)}
         </span>
     );
 }

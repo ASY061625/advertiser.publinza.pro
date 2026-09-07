@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Domain\Billing\Actions\GetWalletBalance;
+use App\Domain\Identity\Support\DisplayFormats;
 use App\Support\ShellData;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -32,8 +33,26 @@ class HandleAdvertiserInertiaRequests extends Middleware
                 'user' => $user === null ? null : [
                     'id' => $user->id,
                     'name' => $user->name,
+                    // What the app calls them, which is not always their legal
+                    // name. Invoices use `name`; the header and messages use
+                    // this, falling back to the first word of the other.
+                    'displayName' => $user->displayName(),
                     'email' => $user->email,
+                    'avatarUrl' => $user->avatarUrl(),
                 ],
+            ],
+            /*
+             * How this person wants dates and numbers rendered.
+             *
+             * Shared on every response rather than fetched by the screen that
+             * sets it, because it drives every table, chart and timestamp in
+             * the app — main.tsx feeds it into @shared/lib/format before the
+             * first paint, so nothing renders in the wrong format first.
+             */
+            'formats' => [
+                'date' => $user?->date_format ?? DisplayFormats::DEFAULT_DATE,
+                'number' => $user?->number_format ?? DisplayFormats::DEFAULT_NUMBER,
+                'timeZone' => $user?->timezone ?? 'UTC',
             ],
             // The wallet chip sits in the header on every advertiser screen.
             'balanceCents' => fn (): int => $user === null
@@ -58,6 +77,10 @@ class HandleAdvertiserInertiaRequests extends Middleware
                 // More than a toast can hold, and the unmatched domains are the
                 // whole reason to look.
                 'importReport' => $request->session()->get('importReport'),
+                // A personal access token, flashed by the request that minted
+                // it. Only its hash is stored, so this is the one and only
+                // render in which it exists.
+                'newToken' => $request->session()->get('newToken'),
             ],
         ];
     }

@@ -3,6 +3,7 @@ import { cn } from '@shared/lib/cn';
 import { Button, Checkbox, ChevronDownIcon, Input, MultiSelect, RangeSlider, SearchIcon, Select } from '@shared/ui';
 import type { PostFilterState, PostOptions } from '@shared/types/posts';
 import { useDebouncedSearch } from './usePostFilters';
+import { number } from '@shared/lib/format';
 
 interface Props {
     filters: PostFilterState;
@@ -193,7 +194,7 @@ export function FilterBar({ filters, options, onChange, scopedFolders = null }: 
                         step={25}
                         showInputs
                         value={[filters.min_price ?? 0, filters.max_price ?? 5000]}
-                        format={(value) => `$${value.toLocaleString('en-US')}`}
+                        format={(value) => `$${number(value)}`}
                         onChange={([min, max]) =>
                             onChange({
                                 min_price: min > 0 ? min : undefined,
@@ -221,7 +222,7 @@ export function FilterBar({ filters, options, onChange, scopedFolders = null }: 
                         max={1_000_000}
                         step={5_000}
                         value={[filters.min_traffic ?? 0, filters.max_traffic ?? 1_000_000]}
-                        format={(value) => value.toLocaleString('en-US')}
+                        format={(value) => number(value)}
                         onChange={([min, max]) =>
                             onChange({
                                 min_traffic: min > 0 ? min : undefined,

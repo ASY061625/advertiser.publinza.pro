@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Advertiser;
 
 use App\Domain\Catalog\Models\Website;
+use App\Domain\Identity\Enums\NotificationChannel;
+use App\Domain\Identity\Enums\NotificationEvent;
+use App\Domain\Identity\Support\NotificationSettings;
 use App\Domain\Messaging\Actions\MarkThreadRead;
 use App\Domain\Messaging\Actions\MarkThreadUnread;
 use App\Domain\Messaging\Actions\PostMessage;
@@ -53,6 +56,7 @@ class ConversationController extends Controller
         ConversationPresenter $presenter,
         MarkThreadRead $markRead,
         SupportAvailability $availability,
+        NotificationSettings $settings,
     ): Response {
         $user = $request->user();
 
@@ -88,7 +92,9 @@ class ConversationController extends Controller
             'filters' => ['tab' => $tab, 'q' => $search, 'thread' => $open?->id],
             'counts' => $this->counts($user),
             'availability' => $availability->state(),
-            'notifyReplies' => (bool) $user->notify_replies,
+            // From the notification matrix, which is the one place that
+            // decides what reaches somebody — not a column of its own.
+            'notifyReplies' => $settings->wants($user, NotificationEvent::NewMessage, NotificationChannel::Email),
             'cannedResponses' => $this->cannedResponses(),
         ]);
     }

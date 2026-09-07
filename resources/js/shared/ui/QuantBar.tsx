@@ -1,4 +1,5 @@
 import { cn } from '@shared/lib/cn';
+import { compactNumber } from '@shared/lib/format';
 
 export interface QuantBarProps {
     value: number;
@@ -11,7 +12,6 @@ export interface QuantBarProps {
     className?: string;
 }
 
-const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 
 /**
  * The signature component.
@@ -34,7 +34,7 @@ export function QuantBar({
     value,
     range,
     inverted = false,
-    format = (v) => compact.format(v),
+    format = (v) => compactNumber(v),
     className,
 }: QuantBarProps) {
     const [min, max] = range;

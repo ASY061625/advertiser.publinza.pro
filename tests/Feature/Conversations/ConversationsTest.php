@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Domain\Identity\Enums\NotificationChannel;
+use App\Domain\Identity\Enums\NotificationEvent;
+use App\Domain\Identity\Models\NotificationPreference;
+use App\Domain\Identity\Support\NotificationSettings;
 use App\Domain\Messaging\Actions\PostMessage;
 use App\Domain\Messaging\DTOs\MessageData;
 use App\Domain\Messaging\Enums\ConversationStatus;
@@ -423,7 +427,16 @@ it('respects a muted thread and an account that has turned replies off', functio
     $muted = thread(buyer(), ['muted_at' => now()]);
 
     $optedOut = buyer();
-    $optedOut->forceFill(['notify_replies' => false])->save();
+
+    // The account-level answer lives in the notification matrix now, not in a
+    // column of its own — one place decides what reaches somebody.
+    NotificationPreference::query()->create([
+        'user_id' => $optedOut->id,
+        'event' => NotificationEvent::NewMessage->value,
+        'email' => false,
+        'in_app' => true,
+        'push' => false,
+    ]);
     $quiet = thread($optedOut);
 
     $post = app(PostMessage::class);
@@ -452,9 +465,14 @@ it('turns reply emails off and on from the inbox', function (): void {
 
     $this->actingAs($user)
         ->patch(advertiserUrl('/settings/notifications'), ['notify_replies' => false])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
 
-    expect($user->fresh()->notify_replies)->toBeFalse();
+    expect(app(NotificationSettings::class)->wants(
+        $user,
+        NotificationEvent::NewMessage,
+        NotificationChannel::Email,
+    ))->toBeFalse();
 });
 
 // --------------------------------------------------------------- the payload

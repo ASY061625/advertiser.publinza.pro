@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Messaging\Actions;
 
+use App\Domain\Identity\Enums\NotificationChannel;
+use App\Domain\Identity\Enums\NotificationEvent;
+use App\Domain\Identity\Support\NotificationSettings;
 use App\Domain\Messaging\DTOs\MessageData;
 use App\Domain\Messaging\Models\Conversation;
 use App\Domain\Messaging\Models\Message;
@@ -18,6 +21,8 @@ final class PostMessage
 {
     /** Private, like article uploads: an attachment is nobody else's business. */
     private const DISK = 'local';
+
+    public function __construct(private readonly NotificationSettings $settings) {}
 
     public function handle(Conversation $conversation, MessageData $data): Message
     {
@@ -99,10 +104,22 @@ final class PostMessage
         ConversationActivity::dispatch($advertiser, $conversation);
         ShellCountsChanged::dispatch($advertiser, ['conversations']);
 
-        // A muted thread and an account that has turned replies off are two
-        // different decisions with the same answer, and both are the reader's
-        // to make. A system notice is not a reply, and is not worth an email.
-        if ($message->sender_type->value === 'system' || $conversation->isMuted() || ! $advertiser->notify_replies) {
+        /*
+         * A muted thread and an account that has turned replies off are two
+         * different decisions with the same answer, and both are the reader's
+         * to make. A system notice is not a reply, and is not worth an email.
+         *
+         * The account-level answer comes from NotificationSettings rather than
+         * from the `notify_replies` column this used to read: the profile's
+         * notification matrix is the one place that decides what reaches
+         * somebody, and two systems answering that question is how a person
+         * ends up muted from something they never muted.
+         */
+        if ($message->sender_type->value === 'system' || $conversation->isMuted()) {
+            return;
+        }
+
+        if (! $this->settings->wants($advertiser, NotificationEvent::NewMessage, NotificationChannel::Email)) {
             return;
         }
 

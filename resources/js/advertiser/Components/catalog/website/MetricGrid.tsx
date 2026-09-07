@@ -1,4 +1,4 @@
-import { compactNumber, number } from '@shared/lib/format';
+import { compactNumber, dayMonth, number } from '@shared/lib/format';
 import { cn } from '@shared/lib/cn';
 import type { MetricTile } from '@shared/types/catalog';
 import { Sparkline } from './Sparkline';
@@ -80,7 +80,7 @@ function provenance(tile: MetricTile): string {
 
     const source = tile.source ? (SOURCES[tile.source] ?? tile.source) : null;
     const when = tile.fetchedAt
-        ? new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(new Date(tile.fetchedAt))
+        ? dayMonth(tile.fetchedAt)
         : null;
 
     if (source && when) return `${source} · ${when}`;

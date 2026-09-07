@@ -1,3 +1,5 @@
+import { number } from '@shared/lib/format';
+
 interface Props {
     values: number[];
     /** Names the measure in the accessible summary. */
@@ -72,7 +74,7 @@ function summarise(label: string, first: number, last: number, points: number): 
     if (first === 0) {
         return last === 0
             ? `${label}, unchanged over ${months}.`
-            : `${label}, from nothing to ${last.toLocaleString('en-US')} over ${months}.`;
+            : `${label}, from nothing to ${number(last)} over ${months}.`;
     }
 
     const change = Math.round(((last - first) / first) * 100);

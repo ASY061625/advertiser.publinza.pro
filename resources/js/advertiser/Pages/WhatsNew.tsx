@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { AppShell } from '../Layouts/AppShell';
 import { cn } from '@shared/lib/cn';
 import type { Paginated } from '@shared/types';
+import { date } from '@shared/lib/format';
 
 interface Entry {
     id: number;
@@ -49,9 +50,7 @@ export default function WhatsNew({ entries }: { entries: Paginated<Entry> }) {
                                 </span>
                                 {entry.published_at && (
                                     <time dateTime={entry.published_at} className="text-sm text-ink-500">
-                                        {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(
-                                            new Date(entry.published_at),
-                                        )}
+                                        {date(entry.published_at)}
                                     </time>
                                 )}
                             </div>

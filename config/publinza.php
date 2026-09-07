@@ -153,6 +153,55 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Geolocation
+    |--------------------------------------------------------------------------
+    |
+    | Which request header carries the client's country, set by the edge.
+    | Cloudflare sends CF-IPCountry; most load balancers have an equivalent.
+    | Empty disables it, and every screen that shows a location says "Unknown"
+    | rather than guessing — a location that is quietly wrong is worse than one
+    | that is honestly missing, because the point of showing it is for somebody
+    | to spot a session that is not theirs.
+    |
+    */
+
+    'geolocation' => [
+        'country_header' => env('GEO_COUNTRY_HEADER', 'CF-IPCountry'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Public API
+    |--------------------------------------------------------------------------
+    |
+    | What the profile's API tab tells people. The rate limit is read from here
+    | by both the page and the limiter, so a screen promising 120 requests a
+    | minute cannot outlive a change to 60.
+    |
+    */
+
+    'api' => [
+        'base_url' => env('API_BASE_URL', 'https://api.publinza.pro/v1'),
+        'docs_url' => env('API_DOCS_URL', 'https://docs.publinza.pro/api'),
+        'rate_limit' => (int) env('API_RATE_LIMIT', 120),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Uploads
+    |--------------------------------------------------------------------------
+    */
+
+    'uploads' => [
+        // An avatar is cropped square in the browser before it is sent, so this
+        // is a ceiling on what a hostile client could post, not a size anybody
+        // legitimately hits.
+        'avatar_max_kb' => (int) env('AVATAR_MAX_KB', 2048),
+        'logo_max_kb' => (int) env('LOGO_MAX_KB', 2048),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Support hours
     |--------------------------------------------------------------------------
     |

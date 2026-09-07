@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Actions;
 
 use App\Domain\Identity\Models\LoginAttempt;
+use App\Domain\Identity\Support\Geolocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -26,6 +27,10 @@ final class RecordLoginAttempt
             'guard' => $guard,
             'ip_address' => $this->request->ip(),
             'user_agent' => Str::limit((string) $this->request->userAgent(), 500, ''),
+            // Recorded here rather than derived later: the header only exists
+            // on the request itself, and the security screen needs to be able
+            // to say where a sign-in came from months afterwards.
+            'country' => Geolocation::countryFor($this->request),
             'successful' => $successful,
         ]);
     }

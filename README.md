@@ -1946,6 +1946,139 @@ with the queue work rather than in a page.
 
 ---
 
+## Profile — `/profile`
+
+Five tabs, deep-linked as `?tab=`: **Account**, **Company**, **Security**,
+**Notifications**, **API**. Each one saves on its own, with its own sticky action
+bar that appears only once something has changed and an unsaved-changes guard on
+the way out. Anything that touches how the account is secured writes a row to the
+security log, which the Security tab renders back at the bottom of the page.
+
+### The email address is not a field you can just edit
+
+Changing it starts a confirmation, it does not take effect. The typed address is
+written to `pending_email` with a hashed token beside it and a two-hour TTL; the
+account keeps signing in with the old address until the link is opened. A typo
+therefore cannot lock anybody out, which is the entire reason the flow exists.
+
+Two things about it are easy to get wrong and both were:
+
+`MailMessage::to()` does not exist. Sending the verification through the ordinary
+notification channel mails whatever address the account currently holds — the old
+one — which defeats the mechanism completely and does so silently. The
+notification declares `routeNotificationForMail()` returning the *new* address,
+and a test asserts the recipient rather than merely that mail was sent.
+
+The form's baseline for that field is `pendingEmail ?? email`, not `email`. The
+server cannot echo back the typed address (it is not the account's address yet),
+so baselining on `email` leaves the form permanently dirty the moment a change is
+requested: the save worked, the bar says "Unsaved changes" forever, and the guard
+fires on every navigation. Cancelling the change puts the field back on the live
+address in the same move.
+
+### Display formats actually drive rendering
+
+The spec asked for the date and number preferences to change rendering across the
+app, not just on the page that sets them. `shared/lib/format.ts` is therefore
+*runtime configurable* module state rather than a set of constants: `main.tsx`
+calls `configureFormats()` from the shared Inertia props before mount and again on
+every `router.on('success')`, and the `Intl` formatters are rebuilt on change and
+cached in between.
+
+Making that true meant sweeping about twenty call sites that had built their own
+`Intl.DateTimeFormat('en-US', …)` or called `toLocaleString('en-US')` inline —
+the ledger table, the dashboard's date span, the history entries, the competitor
+trend axis, the metric tiles, `QuantBar`, `Pagination`, `RangeSlider`, the brief
+editor's character count. A preference that half the app ignores is not a
+preference. `dayMonth()` and `monthYear()` exist because chart ticks want those
+shapes and `Sep 6` versus `6 Sep` is most of what choosing a date format means.
+
+Two traps in that file, both marked in place: `dateStyle` cannot be combined with
+`hour`/`minute` — `Intl` throws "Invalid option" rather than ignoring one — and
+the options are spread into a date-and-time formatter, so every pattern is spelled
+out in explicit components. And `money()` passes `currencyDisplay: 'narrowSymbol'`,
+or `fr-FR` renders USD as `$US`: the reader's grouping is a preference, renaming
+their currency is not.
+
+### Transactional email cannot be switched off, and the check runs first
+
+`NotificationSettings::wants()` returns true for a transactional event on the
+email channel *before* it reads the stored preference and before it reads the
+pause. Order matters: a row written when the lock did not exist, or a pause set
+last week, must not be able to silence a refund notice. The matrix renders those
+four cells as a locked "On" rather than a switch that does nothing.
+
+The save rule is `['present', 'array']`, not `['required', 'array']`. `required`
+rejects `[]`, so a pause-only save with every switch left alone failed validation
+— and the test passed anyway, because a validation failure redirects too. Every
+success-path assertion in `ProfileTest` now carries `assertSessionHasNoErrors()`.
+
+### Two-factor: what costs a password and what does not
+
+Disabling a *confirmed* second factor asks for the password, as does regenerating
+recovery codes. The second one is the quiet one: a hijacked session that can mint
+a fresh set has issued itself eight standing bypasses and silently voided the set
+the real owner has on paper. Both go through the same dialog.
+
+Cancelling a setup that has not been confirmed asks for nothing, and that is
+deliberate — the Cancel button calls the same `disable` endpoint, and demanding a
+password to abandon a half-finished setup is a dead end, not a safeguard. Before
+this, Cancel was unreachable: it posted an empty password into a `required` rule.
+
+The QR is rendered in the browser with `qrcode` rather than fetched from an image
+service, because the provisioning URI contains the shared secret and a chart API
+would take it in a query string.
+
+### Sessions, and a config bug that made them impossible
+
+Active sessions come from the `sessions` table, so the list is only meaningful on
+the database driver; on any other driver the section says so rather than showing
+an empty list. Session ids are hashed with SHA-256 before they reach the browser —
+the raw id is a bearer credential.
+
+`config/session.php` had `'connection' => 'default'`. Laravel reads `null` as
+"whichever connection is the default"; the literal string is looked up as a
+connection *name* and there is no such entry, so the database session driver could
+never boot at all. Pre-existing, and this page is what surfaced it.
+
+### The new-country flag
+
+`ProfilePresenter::loginHistory()` seeds its set of familiar countries from
+successful attempts *older than* the oldest visible row, so the flag is judged
+against the whole history rather than against the twenty rows on screen. Only
+successful attempts make a country familiar: a failed attempt from Belarus must
+not be what stops the next one being flagged.
+
+`DeviceLabel` is thirty lines of ordered regex rather than a user-agent database —
+the job is helping somebody recognise their own laptop. Order carries it: Edge and
+Opera both claim to be Chrome and Chrome claims to be Safari. `HeadlessChrome/`
+needed spelling out, because there is no word boundary inside the compound name
+and `\bChrome\/` therefore labelled every headless browser "Safari on Linux".
+
+### Tokens
+
+Generated with a `pzt_` prefix, stored as a SHA-256 hash, and shown exactly once
+in the response that created them. Scopes are checkboxes and at least one is
+required; `posts:write` carries a "Spends money" badge, because a token with it
+can order placements against the balance.
+
+### Phones get a different layout, not a scrollbar
+
+Two tables here do not survive 390px: the 10×3 notification matrix and the
+five-column sign-in history. Both put the thing they exist for — the switches, the
+country flag — entirely outside the viewport, with nothing on screen to suggest a
+sideways scroll. Below `md` each renders as a stack of cards instead, sharing the
+same cell component so the two layouts cannot drift apart.
+
+### Deleting an account
+
+Refused while any post is non-terminal or any money is frozen, and the dialog
+names both counts rather than saying "you have work in flight". Otherwise it
+stamps `deletion_requested_at`, explains the 30-day window in three numbered
+steps, and takes the password.
+
+---
+
 ## Layout
 
 ```

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Advertiser\Auth;
 
 use App\Domain\Identity\Support\RecoveryCodes;
+use App\Domain\Identity\Support\SecurityLog;
 use App\Domain\Identity\Support\TwoFactor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Inertia\Response;
 
 /**
  * Turning two-factor on and off. Optional: an advertiser who never visits this
@@ -19,19 +19,6 @@ use Inertia\Response;
  */
 class TwoFactorSettingsController extends Controller
 {
-    public function show(Request $request, TwoFactor $twoFactor): Response
-    {
-        $user = $request->user();
-
-        return inertia('Settings/TwoFactor', [
-            'enabled' => $user->hasTwoFactorEnabled(),
-            'pending' => $user->two_factor_secret !== null && $user->two_factor_confirmed_at === null,
-            'secret' => $user->two_factor_confirmed_at === null ? $twoFactor->secretFor($user) : null,
-            'provisioningUri' => $user->two_factor_confirmed_at === null ? $twoFactor->provisioningUri($user) : null,
-            'recoveryCodesLeft' => RecoveryCodes::remaining($user),
-        ]);
-    }
-
     /** Starts setup. Nothing is enforced until a code is confirmed. */
     public function enable(Request $request, TwoFactor $twoFactor): RedirectResponse
     {
@@ -40,7 +27,7 @@ class TwoFactorSettingsController extends Controller
         return back();
     }
 
-    public function confirm(Request $request, TwoFactor $twoFactor): RedirectResponse
+    public function confirm(Request $request, TwoFactor $twoFactor, SecurityLog $log): RedirectResponse
     {
         $request->validate(['code' => ['required', 'string', 'max:16']], [
             'code.required' => 'Enter the six-digit code your authenticator is showing.',
@@ -56,35 +43,63 @@ class TwoFactorSettingsController extends Controller
         }
 
         $twoFactor->confirm($user);
+        $log->record($user, 'two_factor.enabled');
 
         // Shown once, in this response, and never retrievable again.
         return back()->with('recoveryCodes', RecoveryCodes::generate($user));
     }
 
-    /** Regenerating invalidates every previously issued code. */
-    public function regenerateRecoveryCodes(Request $request): RedirectResponse
+    /**
+     * Regenerating invalidates every previously issued code.
+     *
+     * Password-gated for the same reason disabling is: a hijacked session that
+     * can mint a fresh set of recovery codes has minted itself eight standing
+     * bypasses, and locked the real owner out of the set they hold on paper.
+     */
+    public function regenerateRecoveryCodes(Request $request, SecurityLog $log): RedirectResponse
     {
-        abort_unless($request->user()->hasTwoFactorEnabled(), 403);
+        $user = $request->user();
 
-        return back()->with('recoveryCodes', RecoveryCodes::generate($request->user()));
+        abort_unless($user->hasTwoFactorEnabled(), 403);
+
+        $this->confirmPassword($request, 'Enter your password to generate new recovery codes.');
+
+        $log->record($user, 'two_factor.recovery_codes_regenerated');
+
+        return back()->with('recoveryCodes', RecoveryCodes::generate($user));
     }
 
-    public function disable(Request $request, TwoFactor $twoFactor): RedirectResponse
+    public function disable(Request $request, TwoFactor $twoFactor, SecurityLog $log): RedirectResponse
     {
-        // Re-authenticate: turning off a security control is exactly the action
-        // a hijacked session would take.
-        $request->validate(['password' => ['required', 'string']], [
-            'password.required' => 'Enter your password to turn two-factor off.',
-        ]);
+        $user = $request->user();
+
+        /*
+         * Only a *confirmed* second factor costs a password to remove. While
+         * setup is still pending the secret protects nothing yet, and this same
+         * endpoint is what the Cancel button calls — asking for a password to
+         * abandon a half-finished setup is a dead end, not a safeguard.
+         */
+        if ($user->hasTwoFactorEnabled()) {
+            $this->confirmPassword($request, 'Enter your password to turn two-factor off.');
+            $log->record($user, 'two_factor.disabled');
+        }
+
+        $twoFactor->disable($user);
+
+        return back()->with('status', 'Two-factor authentication is off.');
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function confirmPassword(Request $request, string $message): void
+    {
+        $request->validate(['password' => ['required', 'string']], ['password.required' => $message]);
 
         if (! Hash::check((string) $request->input('password'), $request->user()->password)) {
             throw ValidationException::withMessages([
                 'password' => 'That password does not match. Try again, or reset it if you have forgotten it.',
             ]);
         }
-
-        $twoFactor->disable($request->user());
-
-        return back()->with('status', 'Two-factor authentication is off.');
     }
 }

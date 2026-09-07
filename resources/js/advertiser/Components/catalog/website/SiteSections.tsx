@@ -3,6 +3,7 @@ import { Badge, type StatusKey } from '@shared/ui';
 import { cn } from '@shared/lib/cn';
 import type { CatalogSiteDetail, PlacementTerms, SitePlacement } from '@shared/types/catalog';
 import { flagFor } from '../flags';
+import { date, number } from '@shared/lib/format';
 
 /** The countries a flag glyph has no name for on its own. */
 const REGIONS = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -66,7 +67,7 @@ export function PlacementTermsList({ terms }: { terms: PlacementTerms }) {
                 ? `${terms.linksAllowed}`
                 : `${terms.linksAllowed}, up to ${terms.maxLinks}`,
         ],
-        ['Minimum words', terms.minWords.toLocaleString('en-US')],
+        ['Minimum words', number(terms.minWords)],
         ['Marked as sponsored', terms.marksSponsored ? 'Yes' : 'No'],
         [
             'Link guaranteed for',
@@ -182,9 +183,7 @@ export function SamplePosts({ posts }: { posts: CatalogSiteDetail['samplePosts']
                             <p className="mt-0.5 flex items-center gap-2 text-xs text-ink-500">
                                 {post.publishedAt && (
                                     <span>
-                                        {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(
-                                            new Date(post.publishedAt),
-                                        )}
+                                        {date(post.publishedAt)}
                                     </span>
                                 )}
                                 <span className="truncate text-brand">{post.url}</span>

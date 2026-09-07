@@ -21,6 +21,7 @@ use App\Http\Controllers\Advertiser\NotificationPreferenceController;
 use App\Http\Controllers\Advertiser\PostController;
 use App\Http\Controllers\Advertiser\PostGridController;
 use App\Http\Controllers\Advertiser\PostWizardController;
+use App\Http\Controllers\Advertiser\ProfileController;
 use App\Http\Controllers\Advertiser\ProjectController;
 use App\Http\Controllers\Advertiser\ProjectFolderController;
 use App\Http\Controllers\Advertiser\SearchController;
@@ -99,13 +100,67 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/whats-new', [ShellController::class, 'whatsNew'])->name('whats-new');
     Route::get('/search', SearchController::class)->middleware('throttle:60,1')->name('search');
 
-    Route::get('/settings/two-factor', [TwoFactorSettingsController::class, 'show'])->name('two-factor.show');
+    /*
+    | Two-factor. Rendered inside the profile's Security tab rather than on a
+    | page of its own — the old /settings/two-factor screen redirects there.
+    */
+    Route::redirect('/settings/two-factor', '/profile?tab=security')->name('two-factor.show');
     Route::post('/settings/two-factor', [TwoFactorSettingsController::class, 'enable'])->name('two-factor.enable');
     Route::post('/settings/two-factor/confirm', [TwoFactorSettingsController::class, 'confirm'])
         ->name('two-factor.confirm');
     Route::post('/settings/two-factor/recovery-codes', [TwoFactorSettingsController::class, 'regenerateRecoveryCodes'])
         ->name('two-factor.recovery-codes');
     Route::delete('/settings/two-factor', [TwoFactorSettingsController::class, 'disable'])->name('two-factor.disable');
+
+    /*
+    | The advertiser's own account.
+    |
+    | Five tabs over one URL, each saving on its own — these are five unrelated
+    | decisions, and one Save that writes a password change and a timezone in
+    | the same request makes both harder to audit.
+    |
+    | The static shapes sit above the {token} one, so "avatar" and "tokens" are
+    | never read as a token id.
+    */
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+
+    Route::patch('/profile/account', [ProfileController::class, 'updateAccount'])->name('profile.account');
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.store');
+    Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+    Route::get('/profile/avatar/{hash}', [ProfileController::class, 'avatar'])->name('profile.avatar');
+
+    Route::post('/profile/email/resend', [ProfileController::class, 'resendEmailChange'])
+        ->middleware('throttle:6,10')
+        ->name('profile.email.resend');
+    Route::delete('/profile/email', [ProfileController::class, 'cancelEmailChange'])->name('profile.email.cancel');
+    Route::get('/profile/email/{token}', [ProfileController::class, 'confirmEmail'])->name('profile.email.confirm');
+
+    Route::patch('/profile/company', [ProfileController::class, 'updateCompany'])->name('profile.company');
+    Route::post('/profile/company-logo', [ProfileController::class, 'updateCompanyLogo'])
+        ->name('profile.logo.store');
+    Route::delete('/profile/company-logo', [ProfileController::class, 'destroyCompanyLogo'])
+        ->name('profile.logo.destroy');
+    Route::get('/profile/company-logo/{hash}', [ProfileController::class, 'companyLogo'])->name('profile.logo');
+
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])
+        ->middleware('throttle:10,10')
+        ->name('profile.password');
+    Route::post('/profile/sessions/revoke', [ProfileController::class, 'revokeSession'])
+        ->name('profile.sessions.revoke');
+    Route::post('/profile/sessions/revoke-others', [ProfileController::class, 'revokeOtherSessions'])
+        ->name('profile.sessions.revoke-others');
+
+    Route::patch('/profile/notifications', [ProfileController::class, 'updateNotifications'])
+        ->name('profile.notifications');
+
+    Route::post('/profile/tokens', [ProfileController::class, 'createToken'])->name('profile.tokens.store');
+    Route::delete('/profile/tokens/{token}', [ProfileController::class, 'revokeToken'])
+        ->name('profile.tokens.destroy');
+
+    Route::post('/profile/delete', [ProfileController::class, 'requestDeletion'])
+        ->middleware('throttle:6,10')
+        ->name('profile.delete');
+    Route::delete('/profile/delete', [ProfileController::class, 'cancelDeletion'])->name('profile.delete.cancel');
 });
 
 /*

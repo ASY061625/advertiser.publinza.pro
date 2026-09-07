@@ -9,7 +9,11 @@ import type { Shell } from './shell';
 export interface User {
     id: number;
     name: string;
+    /** What the app calls them. Falls back to the first word of `name`. */
+    displayName: string;
     email: string;
+    /** Null until one is uploaded — Avatar draws initials instead. */
+    avatarUrl: string | null;
 }
 
 export interface AdminUser {
@@ -31,6 +35,13 @@ export interface Flash {
     moved?: MovedRecord | null;
     /** What a blacklist import did, in three named groups. */
     importReport?: ImportReport | null;
+    /**
+     * Recovery codes and API tokens exist in plaintext exactly once — in the
+     * response that created them. Both travel here for that one render and are
+     * never retrievable again.
+     */
+    recoveryCodes?: string[] | null;
+    newToken?: { name: string; plain: string } | null;
 }
 
 /** Props Inertia shares with every page on every surface. */

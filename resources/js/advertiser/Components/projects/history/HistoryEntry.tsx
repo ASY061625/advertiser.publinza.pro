@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { useState, type ReactNode } from 'react';
 import { cn } from '@shared/lib/cn';
-import { money } from '@shared/lib/format';
+import { dateTime, money } from '@shared/lib/format';
 import { ChevronDownIcon } from '@shared/ui';
 import type { HistoryEvent, HistoryFamily } from '@shared/types/history';
 import { diffWords } from './textDiff';
@@ -241,5 +241,5 @@ export function relative(iso: string): string {
 }
 
 export function absolute(iso: string): string {
-    return new Intl.DateTimeFormat('en-US', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(iso));
+    return dateTime(iso);
 }

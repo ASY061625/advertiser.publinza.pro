@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { cn } from '@shared/lib/cn';
-import { money } from '@shared/lib/format';
+import { dateTime, money } from '@shared/lib/format';
 import type { LedgerRow, TransactionKind } from '@shared/types/balance';
 
 /**
@@ -48,7 +48,7 @@ export function LedgerTable({
                     {rows.map((row) => (
                         <tr key={row.id} className="border-b border-subtle last:border-0 hover:bg-row-hover">
                             <td className="whitespace-nowrap px-3 py-3 text-sm text-ink-500">
-                                {row.createdAt === null ? '—' : stamp(row.createdAt)}
+                                {row.createdAt === null ? '—' : dateTime(row.createdAt)}
                             </td>
 
                             <td className="px-3 py-3">
@@ -125,15 +125,4 @@ export function TypeBadge({ type, label }: { type: TransactionKind; label: strin
             {label}
         </span>
     );
-}
-
-/** Date and time — the ledger is audited, and the hour matters. */
-function stamp(iso: string): string {
-    return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    }).format(new Date(iso));
 }

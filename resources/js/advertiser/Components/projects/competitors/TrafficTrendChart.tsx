@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { compactNumber, number } from '@shared/lib/format';
+import { compactNumber, monthYear, number } from '@shared/lib/format';
 import { cn } from '@shared/lib/cn';
 import type { TrendSeries } from '@shared/types/competitors';
 import { ChartCard, PAD, labelStride, niceMax, useMeasuredWidth } from '../statistics/chartFoundation';
@@ -266,9 +266,7 @@ function monthLabel(month: string, long = false): string {
     const [year, m] = month.split('-');
     const date = new Date(Number(year), Number(m) - 1, 1);
 
-    return new Intl.DateTimeFormat('en-US', long ? { month: 'long', year: 'numeric' } : { month: 'short' }).format(
-        date,
-    );
+    return monthYear(date, long);
 }
 
 function TrendTable({ months, series }: Props) {

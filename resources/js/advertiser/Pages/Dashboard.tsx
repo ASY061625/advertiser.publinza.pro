@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
-import { money, number } from '@shared/lib/format';
+import { dayMonth, money, number } from '@shared/lib/format';
 import { Button, Card, CartIcon, FolderIcon, GlobeIcon, ListIcon, SparkleIcon, StatCard, WalletIcon } from '@shared/ui';
 import type { DashboardMetrics, Granularity, Stat } from '@shared/types/dashboard';
 import type { PostDraftCard } from '@shared/types/postWizard';
@@ -316,7 +316,5 @@ function formatStat(stat: Stat): string {
 }
 
 function formatSpan(from: string, to: string): string {
-    const format = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-
-    return `${format.format(new Date(from))} – ${format.format(new Date(to))}`;
+    return `${dayMonth(from)} – ${dayMonth(to)}`;
 }

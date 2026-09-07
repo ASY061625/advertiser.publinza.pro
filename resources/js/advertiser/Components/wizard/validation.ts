@@ -1,4 +1,5 @@
 import type { LandingPageRow, WizardState } from '@shared/types/wizard';
+import { number } from '@shared/lib/format';
 
 /**
  * The part of the form the landing-page rules actually read.
@@ -140,7 +141,7 @@ export function missingFor(step: number, state: WizardState): string[] {
     // Step 2 is entirely optional. Targeting narrows the catalog; leaving it
     // blank means "show me everything", which is a legitimate answer.
     return taskLength(state.publisher_task) > MAX_TASK_CHARS
-        ? [`The brief is over ${MAX_TASK_CHARS.toLocaleString('en-US')} characters.`]
+        ? [`The brief is over ${number(MAX_TASK_CHARS)} characters.`]
         : [];
 }
 

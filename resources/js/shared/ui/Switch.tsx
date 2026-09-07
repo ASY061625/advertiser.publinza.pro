@@ -3,6 +3,13 @@ import { cn } from '@shared/lib/cn';
 
 export interface SwitchProps {
     label: string;
+    /**
+     * Keeps the label for screen readers and drops it visually. For a grid of
+     * switches whose row and column already name them — a notification matrix —
+     * where repeating "Post published, Email" beside every control would be
+     * unreadable noise and still has to exist for anyone not seeing the grid.
+     */
+    hideLabel?: boolean;
     hint?: string;
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
@@ -16,13 +23,13 @@ export interface SwitchProps {
  * A switch takes effect immediately — no Save button. If the change needs
  * confirming, use a Checkbox in a form instead.
  */
-export function Switch({ label, hint, checked, onCheckedChange, disabled, loading = false, className }: SwitchProps) {
+export function Switch({ label, hideLabel = false, hint, checked, onCheckedChange, disabled, loading = false, className }: SwitchProps) {
     const id = useId();
     const locked = disabled ?? loading;
 
     return (
         <div className={cn('flex items-start justify-between gap-4', className)}>
-            <span className="flex flex-col gap-0.5">
+            <span className={cn('flex flex-col gap-0.5', hideLabel && 'sr-only')}>
                 <label
                     htmlFor={id}
                     className={cn('text-base', locked ? 'text-ink-500' : 'cursor-pointer text-ink-700')}

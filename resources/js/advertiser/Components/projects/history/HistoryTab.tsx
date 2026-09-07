@@ -2,7 +2,7 @@ import type { RequestPayload } from '@inertiajs/core';
 import { Link, router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Checkbox, DownloadIcon, EmptyState, Input, ListIcon, SearchIcon, Select } from '@shared/ui';
-import { number } from '@shared/lib/format';
+import { date, number } from '@shared/lib/format';
 import type { HistoryEvent, HistoryFamily, HistoryPayload } from '@shared/types/history';
 import type { ProjectDetail } from '@shared/types/projects';
 import { HistoryEntry } from './HistoryEntry';
@@ -394,7 +394,7 @@ function groupByDay(events: HistoryEvent[]): { iso: string; label: string; event
                 ? 'Today'
                 : iso === yesterday
                   ? 'Yesterday'
-                  : new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(new Date(`${iso}T12:00:00`)),
+                  : date(`${iso}T12:00:00`),
         events: dayEvents,
     }));
 }

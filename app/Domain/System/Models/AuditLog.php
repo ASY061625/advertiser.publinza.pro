@@ -7,8 +7,17 @@ namespace App\Domain\System\Models;
 use App\Domain\Posts\Enums\ActorType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 
-/** Append-only record of who did what. */
+/**
+ * Append-only record of who did what.
+ *
+ * @property ActorType $actor_type
+ * @property string $action
+ * @property array<string, mixed>|null $changes
+ * @property string|null $ip_address
+ * @property Carbon $created_at
+ */
 class AuditLog extends Model
 {
     public const UPDATED_AT = null;

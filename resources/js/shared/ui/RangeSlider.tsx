@@ -1,6 +1,7 @@
 import { useCallback, useId, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { cn } from '@shared/lib/cn';
 import { NumberInput } from './NumberInput';
+import { number } from '@shared/lib/format';
 
 export interface RangeSliderProps {
     label: string;
@@ -46,7 +47,7 @@ export function RangeSlider({
     step = 1,
     value,
     onChange,
-    format = (v) => v.toLocaleString('en-US'),
+    format = (v) => number(v),
     showInputs = true,
     histogram,
     scale = 'linear',

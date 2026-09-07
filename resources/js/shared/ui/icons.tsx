@@ -215,6 +215,13 @@ export const MailIcon = (p: IconProps) => (
         <path d="m3 6.5 9 6 9-6" />
     </Svg>
 );
+// A locked switch: a notification that is a receipt, not a preference.
+export const LockIcon = (p: IconProps) => (
+    <Svg {...p}>
+        <path d="M5.5 10.5h13v9.5h-13z" />
+        <path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" />
+    </Svg>
+);
 export const HeartIcon = (p: IconProps) => (
     <Svg {...p}>
         <path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20Z" />

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { cn } from '@shared/lib/cn';
 import { Dropdown } from '@shared/ui';
 import { MAX_TASK_CHARS, taskLength } from './validation';
+import { number } from '@shared/lib/format';
 
 interface Props {
     value: string;
@@ -186,7 +187,7 @@ export function RichBriefEditor({
             <div className="mt-1.5 flex items-start justify-between gap-3">
                 <p className="text-sm text-ink-500">{hint}</p>
                 <span className={cn('num shrink-0 text-sm', over ? 'font-medium text-danger' : 'text-ink-500')}>
-                    {used.toLocaleString('en-US')}/{MAX_TASK_CHARS.toLocaleString('en-US')}
+                    {number(used)}/{number(MAX_TASK_CHARS)}
                 </span>
             </div>
 

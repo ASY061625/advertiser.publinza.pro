@@ -4,10 +4,11 @@ import { Avatar, useDismiss } from '@shared/ui';
 import type { User } from '@shared/types';
 
 const LINKS = [
-    { label: 'Account settings', href: '/settings/account' },
-    { label: 'Company details', href: '/settings/company' },
+    { label: 'Account settings', href: '/profile' },
+    { label: 'Company details', href: '/profile?tab=company' },
+    { label: 'Security', href: '/profile?tab=security' },
     { label: 'Balance & billing', href: '/balance' },
-    { label: 'API keys', href: '/settings/api-keys' },
+    { label: 'API tokens', href: '/profile?tab=api' },
 ];
 
 export function ProfileMenu({ user }: { user: User }) {
@@ -21,10 +22,10 @@ export function ProfileMenu({ user }: { user: User }) {
                 onClick={() => setOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                aria-label={`Account menu for ${user.name}`}
+                aria-label={`Account menu for ${user.displayName}`}
                 className="flex items-center rounded-pill transition-opacity duration-fast hover:opacity-90"
             >
-                <Avatar name={user.name} size="md" />
+                <Avatar name={user.displayName} src={user.avatarUrl ?? undefined} size="md" />
             </button>
 
             {open && (

@@ -8,7 +8,15 @@ return [
     'expire_on_close' => false,
     'encrypt' => (bool) env('SESSION_ENCRYPT', true),
     'files' => storage_path('framework/sessions'),
-    'connection' => env('SESSION_CONNECTION', 'default'),
+    /*
+     * Null, not 'default'.
+     *
+     * Laravel reads null here as "whichever connection is the default"; the
+     * literal string 'default' is looked up as a connection *name* and there is
+     * no such entry in config/database.php — so the database session driver
+     * could never boot, and the profile's Active sessions list depends on it.
+     */
+    'connection' => env('SESSION_CONNECTION'),
     'store' => env('SESSION_STORE'),
     'lottery' => [2, 100],
     'cookie' => env('SESSION_COOKIE', 'publinza_session'),

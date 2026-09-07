@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { Drawer, SkeletonText } from '@shared/ui';
 import { cn } from '@shared/lib/cn';
 import type { ChangelogEntry } from '@shared/types/shell';
+import { date } from '@shared/lib/format';
 
 const CHIPS: Record<string, string> = {
     new: 'bg-status-new-bg text-status-new-fg',
@@ -82,9 +83,7 @@ export function WhatsNewDrawer({ open, onClose, onRead }: { open: boolean; onClo
                                 </span>
                                 {entry.publishedAt && (
                                     <time dateTime={entry.publishedAt} className="text-sm text-ink-500">
-                                        {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(
-                                            new Date(entry.publishedAt),
-                                        )}
+                                        {date(entry.publishedAt)}
                                     </time>
                                 )}
                                 {entry.unread && (

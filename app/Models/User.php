@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 
 /**
  * An advertiser. Staff accounts live in App\Domain\Admin\Models\Admin on a
@@ -42,7 +43,15 @@ use Illuminate\Notifications\Notifiable;
  * @property UserStatus $status
  * @property array<string, mixed>|null $grid_preferences
  * @property bool $sidebar_collapsed
- * @property bool $notify_replies
+ * @property string|null $display_name
+ * @property string|null $avatar_path
+ * @property string $date_format
+ * @property string $number_format
+ * @property string|null $pending_email
+ * @property string|null $pending_email_token
+ * @property Carbon|null $pending_email_sent_at
+ * @property Carbon|null $notifications_paused_until
+ * @property Carbon|null $deletion_requested_at
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -83,7 +92,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'sidebar_collapsed' => 'boolean',
-            'notify_replies' => 'boolean',
+            'pending_email_sent_at' => 'datetime',
+            'notifications_paused_until' => 'datetime',
+            'deletion_requested_at' => 'datetime',
             'changelog_read_at' => 'datetime',
             'grid_preferences' => 'array',
             'two_factor_confirmed_at' => 'datetime',
@@ -98,6 +109,36 @@ class User extends Authenticatable implements MustVerifyEmail
     public function savedViews(): HasMany
     {
         return $this->hasMany(SavedView::class)->orderBy('name');
+    }
+
+    /**
+     * What to call them on screen.
+     *
+     * Falls back to the first word of the legal name rather than the whole of
+     * it: "Dana" reads as a greeting, "Dana Okafor Consulting Ltd" does not.
+     */
+    public function displayName(): string
+    {
+        $chosen = trim((string) $this->display_name);
+
+        if ($chosen !== '') {
+            return $chosen;
+        }
+
+        return explode(' ', trim($this->name))[0] ?: $this->name;
+    }
+
+    /** Null until one is uploaded; the Avatar component draws initials. */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path === null ? null : '/profile/avatar/'.md5($this->avatar_path);
+    }
+
+    /** Are non-essential notifications muted right now? */
+    public function notificationsArePaused(): bool
+    {
+        return $this->notifications_paused_until !== null
+            && $this->notifications_paused_until->isFuture();
     }
 
     public function isActive(): bool
