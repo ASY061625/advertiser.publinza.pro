@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\LoginAttempt;
+use App\Domain\Projects\Models\Project;
 use App\Models\User;
 use App\Notifications\AccountLockedNotification;
 use Illuminate\Support\Facades\Cache;
@@ -43,6 +44,21 @@ it('sends a first-ever sign-in to project creation instead', function (): void {
         'email' => 'dana@northwind.test',
         'password' => 'Correct-Horse-9',
     ])->assertRedirect(advertiserUrl('/projects/create'));
+});
+
+it('sends a first sign-in that already owns projects to the dashboard', function (): void {
+    // "Never signed in" is only a proxy for "has nothing to look at". An account
+    // seeded, imported, or invited into an existing team owns projects before it
+    // has ever signed in, and telling it to create its first is wrong. A fresh
+    // install found this: the demo advertiser landed on project creation with
+    // three seeded projects already there.
+    $user = advertiser(['last_login_at' => null]);
+    Project::factory()->for($user, 'owner')->create();
+
+    $this->post(advertiserUrl('/login'), [
+        'email' => 'dana@northwind.test',
+        'password' => 'Correct-Horse-9',
+    ])->assertRedirect(advertiserUrl('/dashboard'));
 });
 
 it('stamps the sign-in so the next one is not treated as the first', function (): void {

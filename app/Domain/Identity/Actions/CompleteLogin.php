@@ -47,8 +47,15 @@ final class CompleteLogin
         $this->throttle->clear($user->email);
         $this->recordAttempt->handle($user->email, successful: true);
 
-        // A first-ever sign-in has nothing to look at on the dashboard, so it
-        // goes straight to creating the first project.
-        return $isFirstEver ? '/projects/create' : '/dashboard';
+        // A first-ever sign-in usually has nothing to look at on the dashboard,
+        // so it goes straight to creating the first project — but "never signed
+        // in" is only a proxy for "has nothing yet", and the proxy is wrong for
+        // any account that gets data before its first sign-in: a seeded demo
+        // account, an imported one, or someone invited into an existing team.
+        // A fresh install signed in to three seeded projects and was still told
+        // to create its first. Ask the real question instead.
+        $hasNothingYet = ! $user->projects()->exists();
+
+        return $isFirstEver && $hasNothingYet ? '/projects/create' : '/dashboard';
     }
 }
