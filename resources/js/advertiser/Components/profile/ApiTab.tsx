@@ -316,7 +316,7 @@ function CurlExample({ baseUrl }: { baseUrl: string }) {
 
     return (
         <div className="relative">
-            <pre className="num overflow-x-auto rounded-card bg-ink-900 px-4 py-3 text-sm text-white">
+            <pre className="num relative overflow-x-auto rounded-card bg-ink-900 px-4 py-3 text-sm text-white">
                 {snippet}
             </pre>
 

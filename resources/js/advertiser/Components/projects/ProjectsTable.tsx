@@ -32,7 +32,7 @@ const SORTABLE: Record<string, string> = {
  */
 export function ProjectsTable({ projects, totals, sort, onSortChange, onDelete }: Props) {
     return (
-        <div className="overflow-x-auto rounded-card border border-subtle bg-card shadow-card">
+        <div className="relative overflow-x-auto rounded-card border border-subtle bg-card shadow-card">
             <table className="w-full min-w-[1100px] border-collapse text-left">
                 <caption className="sr-only">
                     Your projects, with post counts and spend. Select a row to open it.

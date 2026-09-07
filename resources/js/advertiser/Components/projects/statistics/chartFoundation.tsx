@@ -125,7 +125,7 @@ export function ChartCard({
                 unquotable to anyone who needs the number. */}
             <details className="mt-4">
                 <summary className="cursor-pointer text-sm text-ink-500">View as a table</summary>
-                <div className="mt-3 overflow-x-auto">{table}</div>
+                <div className="relative mt-3 overflow-x-auto">{table}</div>
             </details>
         </section>
     );

@@ -291,7 +291,17 @@ export function PostsGrid({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     {savedViews ? <SavedViews views={savedViews} filters={filters} onApply={visit} /> : <span />}
 
-                    <div className="flex items-end gap-2">
+                    {/*
+                        Wraps, like the row it sits in.
+
+                        The view toggle, the page-size select and the column
+                        menu come to 451px side by side, which does not fit a
+                        390px phone — and an unwrapped flex row does not shrink,
+                        it pushes, so the whole page grew a horizontal
+                        scrollbar. Only the project tab showed it, because
+                        that is the one place the view toggle renders.
+                    */}
+                    <div className="flex flex-wrap items-end gap-2">
                         {onViewChange && (
                             <ViewToggle
                                 value={view}

@@ -37,7 +37,7 @@ export function ReviewStep({ cart }: { cart: CartPayload }) {
                         </span>
                     </header>
 
-                    <div className="overflow-x-auto">
+                    <div className="relative overflow-x-auto">
                         <table className="w-full min-w-[720px] text-base">
                             <thead>
                                 <tr className="border-b border-subtle text-left text-xs uppercase tracking-wide text-ink-500">

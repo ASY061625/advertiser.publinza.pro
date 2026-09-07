@@ -90,7 +90,7 @@ export function Tabs({ items, value, onChange, className, scrollable = false, ma
                 onKeyDown={onKeyDown}
                 className={cn(
                     'flex items-center gap-6 border-b border-subtle',
-                    scrollable && 'max-w-full overflow-x-auto',
+                    scrollable && 'relative max-w-full overflow-x-auto',
                 )}
             >
                 {items.map((item) => {

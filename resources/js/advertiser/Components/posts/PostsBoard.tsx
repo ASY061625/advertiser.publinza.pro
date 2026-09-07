@@ -59,7 +59,7 @@ export function PostsBoard({ rows, onCardClick, activeId, paged }: Props) {
                 {paged && ' This is one page of posts; the rest are on the pages below.'}
             </p>
 
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="relative flex gap-3 overflow-x-auto pb-2">
                 {COLUMNS.map((column) => {
                     const cards = rows.filter((row) => column.statuses.includes(row.status));
 

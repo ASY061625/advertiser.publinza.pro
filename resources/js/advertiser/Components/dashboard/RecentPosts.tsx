@@ -58,7 +58,7 @@ export function RecentPosts({ posts }: Props) {
     }
 
     return (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-left">
                 <caption className="sr-only">Your eight most recent posts</caption>
                 <thead>

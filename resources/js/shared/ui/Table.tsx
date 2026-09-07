@@ -80,8 +80,19 @@ export function Table<Row>({
 
     const rowHeight = density === 'catalog' ? 'h-row-catalog' : 'h-row';
 
+    /*
+     * `relative` on the scroll container below is load-bearing, not decoration.
+     *
+     * Table markup carries `sr-only` captions and column labels, and `sr-only`
+     * is `position: absolute`. Without a positioned ancestor those resolve
+     * against the initial containing block rather than the scroll container —
+     * putting a 1px span hundreds of pixels right of the viewport and giving
+     * the whole *page* a horizontal scrollbar. The table itself scrolls
+     * correctly either way, which is what makes it invisible until somebody
+     * measures the document rather than looking at it.
+     */
     return (
-        <div className={cn('overflow-x-auto rounded-card border border-subtle bg-card shadow-card', className)}>
+        <div className={cn('relative overflow-x-auto rounded-card border border-subtle bg-card shadow-card', className)}>
             <table
                 className={cn(
                     'w-full border-collapse text-left text-base',

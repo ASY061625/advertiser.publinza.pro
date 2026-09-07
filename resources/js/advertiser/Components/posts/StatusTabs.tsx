@@ -23,7 +23,7 @@ export function StatusTabs({ tabs, counts, value, onChange }: Props) {
         <div
             role="tablist"
             aria-label="Filter posts by status"
-            className="-mb-px flex items-center gap-1 overflow-x-auto border-b border-subtle"
+            className="relative -mb-px flex items-center gap-1 overflow-x-auto border-b border-subtle"
         >
             {tabs.map((tab) => {
                 const selected = tab.value === value;

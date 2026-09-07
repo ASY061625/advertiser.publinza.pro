@@ -56,7 +56,7 @@ export function SettingsNav() {
 
     return (
         <nav aria-label="Settings sections" className="sticky top-[calc(var(--header-height,3.5rem)+1.25rem)]">
-            <ul className="flex flex-row gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+            <ul className="relative flex flex-row gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
                 {SETTINGS_SECTIONS.map((section) => {
                     const current = section.id === active;
 

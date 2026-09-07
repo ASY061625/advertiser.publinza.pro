@@ -84,7 +84,7 @@ export function PostsTable({
     }
 
     return (
-        <div className="overflow-x-auto rounded-card border border-subtle bg-card shadow-card">
+        <div className="relative overflow-x-auto rounded-card border border-subtle bg-card shadow-card">
             <table className="w-full border-collapse text-left">
                 <caption className="sr-only">
                     Posts. Select a row to open its details; use the column menu to change what is shown.

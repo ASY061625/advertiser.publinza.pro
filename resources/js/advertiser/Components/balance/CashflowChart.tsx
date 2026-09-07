@@ -162,7 +162,7 @@ export function CashflowChart({ series }: { series: MonthPoint[] }) {
                 this card, so the figures have to be readable without the hue. */}
             <details className="mt-4">
                 <summary className="cursor-pointer text-sm text-ink-500">View as a table</summary>
-                <div className="mt-3 overflow-x-auto">
+                <div className="relative mt-3 overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead>
                             <tr>

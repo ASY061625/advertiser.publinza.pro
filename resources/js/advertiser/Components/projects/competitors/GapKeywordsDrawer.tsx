@@ -88,7 +88,7 @@ export function GapKeywordsDrawer({ projectId, competitor, limit, onClose }: Pro
                     {/* The panel is 480px and the ranking URLs are long. The
                         table scrolls inside it rather than clipping the
                         difficulty column off the right edge. */}
-                    <div className="-mx-1 overflow-x-auto px-1">
+                    <div className="relative -mx-1 overflow-x-auto px-1">
                         <table className="w-full min-w-[420px] border-collapse text-left text-sm">
                             <caption className="sr-only">
                                 Keywords {payload.domain} ranks for and your site does not

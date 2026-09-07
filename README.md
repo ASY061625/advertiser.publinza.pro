@@ -2588,6 +2588,24 @@ match the route group it is aimed at.
 CI runs the same checks and additionally asserts that no admin chunk is reachable from the
 advertiser build.
 
+### `sr-only` and horizontal scroll containers
+
+`npm run verify:scroll` fails the build when an `overflow-x-auto` container is
+not positioned.
+
+`sr-only` is `position: absolute`. Inside a scroll container with no positioned
+ancestor, an `sr-only` caption or column label resolves against the initial
+containing block instead of the container — so a 1px span lands hundreds of
+pixels right of the viewport and gives the whole *page* a horizontal scrollbar.
+
+What makes it worth a build check is how it fails. The table still scrolls
+correctly. Nothing looks wrong, nothing throws, and on a desktop nothing is
+visible at all. The only symptom is `document.scrollWidth` exceeding the window,
+which is invisible until somebody measures it — and it shipped in four places
+(the dashboard, the project list, the post manager and the project's posts tab)
+before anyone did. The fix is one word, `relative`, and the check is there so
+the fifth one is caught rather than hoped about.
+
 ### Two tests skip without MySQL
 
 `tests/Feature/Billing/WalletConcurrencyTest.php` proves that concurrent freezes cannot
