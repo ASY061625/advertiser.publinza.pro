@@ -107,6 +107,18 @@ export default function CatalogIndex({
             <Head title="Catalog of websites" />
 
             <div className="flex flex-col gap-4">
+                {/* Every other screen names itself here, and the breadcrumb is
+                    built assuming it: below `sm` it drops its middle crumbs
+                    because "the page's own h1 says where you are". This one had
+                    no h1 at all, so the busiest screen in the product was the
+                    one place that sentence was not true. The site count is not
+                    a substitute — it lives in the toolbar as an aria-live
+                    region, which announces filter results rather than naming
+                    the page. */}
+                <header>
+                    <h1 className="font-sora text-xl font-semibold text-ink-900">Catalog of websites</h1>
+                </header>
+
                 <ProjectBar project={project} projects={projects} query={{ ...state, project: undefined }} />
 
                 <div className="flex gap-6">
