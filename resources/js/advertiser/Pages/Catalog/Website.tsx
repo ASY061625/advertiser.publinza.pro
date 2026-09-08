@@ -52,7 +52,9 @@ export default function CatalogWebsite({ site, ranges, buying, project }: Props)
                 <WebsiteDetail site={site} ranges={ranges} />
             </div>
 
-            <div className="sticky bottom-0 z-10 -mx-6 mt-6 flex border-t border-subtle bg-card px-6 py-3 shadow-card">
+            {/* Same bleed-matches-gutter rule as the checkout footer: `main` is
+                `px-4` until `lg`, so a flat `-mx-6` overhangs by 8px. */}
+            <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex border-t border-subtle bg-card px-4 py-3 shadow-card lg:-mx-6 lg:px-6">
                 <div className="mx-auto flex w-full max-w-3xl">
                     <BuyBar site={site} projectId={project?.id ?? null} buying={buying} />
                 </div>

@@ -62,6 +62,13 @@ export default function CheckoutIndex({ step, steps, cart, content, wallet, bill
             <Head title="Checkout" />
 
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+                {/* Names the page, not the step. The step indicator already
+                    marks where you are with aria-current, and a heading that
+                    renamed itself each step would move the one landmark a
+                    screen reader uses to re-orient after each advance. The
+                    steps render h2s, so this is the level above them. */}
+                <h1 className="font-sora text-xl font-semibold text-ink-900">Checkout</h1>
+
                 <StepIndicator steps={steps} current={step} furthest={steps.length - 1} />
 
                 {step === 'review' && <ReviewStep cart={cart} />}
@@ -78,7 +85,12 @@ export default function CheckoutIndex({ step, steps, cart, content, wallet, bill
                     />
                 )}
 
-                <footer className="sticky bottom-0 -mx-6 flex flex-wrap items-center gap-3 border-t border-subtle bg-card px-6 py-3 shadow-card">
+                {/* The bleed has to match `main`'s padding, which is `px-4`
+                    until `lg`. A flat `-mx-6` pulls 24px out of a 16px gutter,
+                    so the bar hung 8px past the right edge and gave the whole
+                    document a horizontal scrollbar on a phone — on the one
+                    screen where a stray sideways drag costs money. */}
+                <footer className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-3 border-t border-subtle bg-card px-4 py-3 shadow-card lg:-mx-6 lg:px-6">
                     {index === 0 ? (
                         <Link
                             href="/cart"

@@ -83,7 +83,23 @@ export default function CartIndex({ cart, wallet, projects }: Props) {
         <AppShell title="Cart" crumbs={[{ label: 'Cart' }]}>
             <Head title="Your cart" />
 
-            {cart.itemCount === 0 ? (
+            {/* Outside the empty/filled branch on purpose: an empty cart is
+                still the cart, and EmptyState renders its direction as a <p>
+                rather than a heading — correctly, since it also appears inside
+                tabs and panels where a page-level heading would be wrong. Put
+                the h1 inside the branch and the page loses its name exactly
+                when there is least else on screen to identify it. */}
+            <div className="flex flex-col gap-4">
+                <header className="flex flex-wrap items-baseline gap-3">
+                    <h1 className="font-sora text-xl font-semibold text-ink-900">Your cart</h1>
+                    {cart.itemCount > 0 && (
+                        <span className="num text-sm text-ink-500">
+                            {cart.itemCount} {cart.itemCount === 1 ? 'site' : 'sites'}
+                        </span>
+                    )}
+                </header>
+
+                {cart.itemCount === 0 ? (
                 <EmptyState
                     illustration={<CartIcon size={26} />}
                     direction="Your cart is empty"
@@ -152,7 +168,8 @@ export default function CartIndex({ cart, wallet, projects }: Props) {
                         </div>
                     </aside>
                 </div>
-            )}
+                )}
+            </div>
 
             <EditItemModal item={editing} projects={projects} onClose={() => setEditing(null)} />
 
