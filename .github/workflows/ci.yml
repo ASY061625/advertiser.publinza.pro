@@ -52,3 +52,9 @@ jobs:
 
             - name: Assert every design-system class resolves
               run: npm run verify:tokens
+
+            - name: Assert horizontal scroll containers are positioned
+              run: npm run verify:scroll
+
+            - name: Assert every page renders an h1
+              run: npm run verify:headings

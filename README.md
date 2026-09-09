@@ -2606,6 +2606,32 @@ which is invisible until somebody measures it — and it shipped in four places
 before anyone did. The fix is one word, `relative`, and the check is there so
 the fifth one is caught rather than hoped about.
 
+### Every page has to name itself
+
+`npm run verify:headings` fails the build when an Inertia page cannot render an
+`<h1>`.
+
+The shell assumes every page names itself. The breadcrumb drops its middle
+crumbs below `sm` on the reasoning — written down in `Header.tsx` — that "the
+page's own h1 says where you are", and on a phone the trail is hidden
+altogether. A page with no `h1` has nothing naming it at exactly the width where
+that matters most.
+
+This one also fails quietly: nothing throws, and on a desktop the breadcrumb is
+doing the job, so the page looks finished. The catalog, the cart and the
+checkout all shipped without one and were found by measuring the DOM rather than
+by reading the diff.
+
+A page passes three ways, because all three are how pages here get a heading: a
+literal `<h1>`; `heading="h1"` passed to a component that takes a heading level,
+as `Catalog/Website.tsx` does; or rendering a component that provides one, as
+the six auth pages do through `AuthLayout`. That last case is why the check
+resolves imports and walks the component graph instead of keeping a list of
+exempt filenames. A stale allowlist fails by silently excusing a page from the
+check meant to protect it; following the imports means a new layout works
+without touching the script, and a page stops passing the moment it stops
+rendering a heading.
+
 ### Two tests skip without MySQL
 
 `tests/Feature/Billing/WalletConcurrencyTest.php` proves that concurrent freezes cannot

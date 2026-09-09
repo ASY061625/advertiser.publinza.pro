@@ -127,6 +127,7 @@ test: ## Run every check: Pest, PHPStan, Pint, ESLint, Prettier, tsc, bundle iso
 	$(NPM) run verify:bundles
 	$(NPM) run verify:tokens
 	$(NPM) run verify:scroll
+	$(NPM) run verify:headings
 
 .PHONY: pest
 pest: ## Run the PHP test suite only
